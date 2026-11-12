@@ -188,8 +188,9 @@ class Handler(BaseHTTPRequestHandler):
         body = f"""
 {alert_html}
 <div class="grid">
-<div class="card"><div class="muted">Temperatur</div><div class="value">{html.escape(temp)}</div></div>
-<div class="card"><div class="muted">RAM belegt / gesamt</div><div class="value">{html.escape(ram)}</div></div>
+<div class="card"><div class="muted">CPU-Temperatur</div><div class="value">{html.escape(temp)}</div><div class="metricbar { "bad" if "tval" in locals() and tval >= 75 else "warn" if "tval" in locals() and tval >= 60 else "" }"><span style="width:{min(100, max(0, tval if "tval" in locals() else 0)):.0f}%"></span></div><p class="muted">Warnschwelle 75 °C</p></div>
+<div class="card"><div class="muted">RAM-Auslastung</div><div class="value">{html.escape(ram)}</div><div class="metricbar { "bad" if ram_pct >= 90 else "warn" if ram_pct >= 75 else "good" }"><span style="width:{ram_pct}%"></span></div></div>
+<div class="card"><div class="muted">Root-Speicher</div><div class="value">{disk_pct} %</div><div class="metricbar { "bad" if disk_pct >= 90 else "warn" if disk_pct >= 75 else "good" }"><span style="width:{disk_pct}%"></span></div><p class="muted">{html.escape(disk_info)}</p></div>
 <div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
 <div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
 <div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
