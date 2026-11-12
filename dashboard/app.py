@@ -173,7 +173,7 @@ class Handler(BaseHTTPRequestHandler):
         maintenance_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "maintenance-status"], 5).strip()
         ssh_keys_output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-list"], 5).strip()
         ssh_password_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-status"], 5).strip()
-        ssh_password_enabled = ssh_password_status.endswith("aktiviert")
+        ssh_password_enabled = ssh_password_status.strip() == "SSH-Passwortanmeldung: aktiviert"
         ssh_key_count = sum(1 for line in ssh_keys_output.splitlines() if len(line.split()) >= 2 and line.split()[1].startswith("SHA256:"))
         ssh_keys_html = ""
         if ssh_keys_output:
@@ -317,7 +317,7 @@ class Handler(BaseHTTPRequestHandler):
         if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
         if action == "ssh-password-auth":
-            enabled = form.get("enabled", ["no"])[0] == "yes"
+            enabled = "yes" in form.get("enabled", [])
             result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-auth", "enable" if enabled else "disable"],
                                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20, check=False)
             output = result.stdout.strip() or ("Einstellung gespeichert." if result.returncode == 0 else "Änderung fehlgeschlagen.")
