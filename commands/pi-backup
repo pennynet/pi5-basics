@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ $# -ne 1 ]]; then echo "Aufruf: sudo pi-backup /pfad/zum/gemounteten/backupziel" >&2; exit 2; fi
+TARGET="$1"
+if [[ $EUID -ne 0 ]]; then exec sudo "$0" "$TARGET"; fi
+if [[ ! -d "$TARGET" || "$TARGET" == "/" ]]; then echo "Ungültiges Backupziel." >&2; exit 2; fi
+if ! mountpoint -q "$TARGET" && [[ "$TARGET" != /home/* ]]; then
+  echo "Warnung: Ziel ist kein eigener Mountpoint. Bitte sicherstellen, dass das Backupmedium eingehängt ist."
+  read -r -p "Trotzdem fortfahren? [j/N] " answer
+  [[ "$answer" =~ ^[JjYy]$ ]] || exit 1
+fi
+STAMP="$(date +%F_%H%M%S)"
+DEST="$TARGET/pi5-backup-$STAMP"
+mkdir -p "$DEST"
+rsync -aHAX --numeric-ids --one-file-system --info=progress2 \
+  /etc /home /root /boot/firmware "$DEST/"
+echo "Backup erstellt: $DEST"
+echo "Hinweis: Dies ist ein Datei-Backup, kein garantiert bootfähiges Systemabbild."
