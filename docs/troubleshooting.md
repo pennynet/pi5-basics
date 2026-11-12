@@ -68,7 +68,7 @@ sudo systemd-analyze security pi5-terminal.service
 - Terminal läuft auf Port 7681; Dashboard auf Port 8080.
 - Im Browser müssen die separaten Zugangsdaten aus `sudo cat /etc/pi5-basics-terminal.env` verwendet werden.
 - Nur ein Browser-Client kann gleichzeitig verbunden sein. Einen zweiten Tab schließen und erneut versuchen.
-- Der nftables-Filter erlaubt nur private IPv4-Netze sowie IPv6 ULA-/Link-Local-Adressen und Loopback. Bei Zugriff aus einem ungewöhnlichen VPN-/Subnetz kann die Verbindung blockiert werden. Prüfen: `sudo nft list table inet pi5_terminal`.
+- Der nftables-Filter erlaubt nur die Subnetze der Default-Route-Schnittstelle sowie Loopback. Bei Zugriff über ein anderes Interface oder ein zusätzliches VPN-/Subnetz kann die Verbindung blockiert werden. Prüfen: `sudo nft list table inet pi5_terminal`.
 - Prüfen, ob `ttyd` installiert ist: `command -v ttyd`.
 - Bei Problemen nach einem Paket- oder Systemupdate: `sudo systemctl restart pi5-terminal`.
 
