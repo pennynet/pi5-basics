@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -u
 echo "=== Raspberry Pi Status ==="
-printf 'Modell: '; tr -d '\0' </proc/device-tree/model 2>/dev/null || echo unbekannt
+printf 'Modell: '; tr -d '\0' </proc/device-tree/model 2>/dev/null || echo unbekannt; printf '\n'
 printf 'OS: '; . /etc/os-release; echo "${PRETTY_NAME:-unbekannt}"
 echo
 echo "-- Uptime / Load --"; uptime
 echo
 echo "-- RAM --"; free -h
 echo
-echo "-- Speicher --"; lsblk -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS,MODEL
+echo "-- Speicher --"; lsblk -e7 -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINT,MODEL
 echo
 echo "-- Netzwerk --"
 if command -v ip >/dev/null 2>&1; then
