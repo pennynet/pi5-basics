@@ -163,7 +163,7 @@ class Handler(BaseHTTPRequestHandler):
             if secrets.compare_digest(supplied, DASHBOARD_PASSWORD):
                 sid = secrets.token_urlsafe(32)
                 SESSIONS[sid] = {"csrf": secrets.token_urlsafe(24)}
-                return self.send(303, page("Dashboard", '<p>Anmeldung erfolgreich. <a href="/">Weiter</a></p>'),
+                return self.send(200, page("Dashboard", '<p>Anmeldung erfolgreich. <a href="/">Dashboard öffnen</a></p>'),
                                  f"pi5session={sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800")
             time.sleep(1)
             return self.send(401, page("Anmeldung", '<p>Anmeldung fehlgeschlagen.</p><a href="/">Erneut versuchen</a>'))
@@ -177,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
             sid = cookie.get("pi5session")
             if sid:
                 SESSIONS.pop(sid.value, None)
-            return self.send(303, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
+            return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
         if action not in ("status", "ssd", "maintenance", "backup"):
