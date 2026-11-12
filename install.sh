@@ -371,7 +371,7 @@ set +a
   echo "Ungültige Terminal-Zugangsdaten in /etc/pi5-basics-terminal.env." >&2
   exit 1
 }
-printf '%s\\n' "$TERMINAL_PASSWORD" | htpasswd -i -B -c /etc/nginx/pi5-terminal.htpasswd "$TERMINAL_USER"
+printf '%s\n' "$TERMINAL_PASSWORD" | htpasswd -i -B -c /etc/nginx/pi5-terminal.htpasswd "$TERMINAL_USER"
 chown root:www-data /etc/nginx/pi5-terminal.htpasswd
 chmod 0640 /etc/nginx/pi5-terminal.htpasswd
 install -m 0644 "$PROJECT_DIR/systemd/pi5-terminal-nginx.conf" /etc/nginx/conf.d/pi5-terminal.conf
