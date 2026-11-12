@@ -101,7 +101,7 @@ sudo journalctl -u pi5-dashboard -n 50 --no-pager
 
 ## Interaktives Linux-Terminal
 
-Der Installer lädt `ttyd` passend zur Systemarchitektur aus dem offiziellen GitHub-Release von `tsl0922/ttyd`, prüft die veröffentlichte SHA-256-Prüfsumme und installiert die Binärdatei nach `/usr/local/bin/ttyd`. Anschließend richtet er einen eigenen Dienst auf Port 7681 ein. Falls Release-Asset oder Prüfsumme fehlen oder nicht passen, bricht der Installer vor der Einrichtung des Terminalkontos ab. Das Dashboard bettet das Terminal ein; alternativ kann es separat unter `http://<pi-ip>:7681` geöffnet werden.
+Der Installer lädt `ttyd` passend zur Systemarchitektur (arm64, armhf oder amd64) aus dem offiziellen GitHub-Release von `tsl0922/ttyd` und gleicht die Datei mit dem Eintrag in `SHA256SUMS` ab und installiert die Binärdatei nach `/usr/local/bin/ttyd`. Anschließend richtet er einen eigenen Dienst auf Port 7681 ein. Falls Release-Asset oder Prüfsumme fehlen oder nicht passen, bricht der Installer vor der Einrichtung des Terminalkontos ab. Das Dashboard bettet das Terminal ein; alternativ kann es separat unter `http://<pi-ip>:7681` geöffnet werden.
 
 - Linux-Benutzer: `pi5terminal`, Shell: Bash, Home: `/home/pi5terminal`.
 - Eine gleichzeitige Browserverbindung (`--max-clients 1`).
