@@ -56,12 +56,12 @@ def system_data():
 
 def network_data():
     """Return useful interface/IP information even when the ip command is unavailable."""
-    output = run_readonly(["ip", "-brief", "address"], 5)
+    output = run_readonly(["/usr/sbin/ip", "-brief", "address"], 5)
     if output and not output.startswith("Fehler:") and output.strip():
         lines = [line for line in output.splitlines() if not line.lstrip().startswith("lo ")]
         if lines:
             return "\n".join(lines)
-    fallback = run_readonly(["hostname", "-I"], 5).strip()
+    fallback = run_readonly(["/usr/bin/hostname", "-I"], 5).strip()
     if fallback and not fallback.startswith("Fehler:"):
         return "IP-Adresse(n): " + fallback
     return "Keine Netzwerkadresse ermittelbar (iproute2/Netzwerkverbindung prüfen)."
