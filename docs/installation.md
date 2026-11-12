@@ -50,6 +50,31 @@ Danach die Datei /etc/pi5-basics.conf anpassen und den Installer erneut ausführ
 
 Bei Aktivierung wird unattended-upgrades installiert und der tägliche Paketlisten- und Upgrade-Lauf aktiviert. Das ersetzt keine regelmäßige Prüfung des Systems. Größere Distributions-Upgrades und EEPROM-Firmware-Upgrades erfolgen nicht automatisch durch dieses Projekt.
 
+## Automatische Systemwartung
+
+Der Installer aktiviert standardmäßig einen systemd-Timer für die wöchentliche Wartung am Sonntag um 04:00 Uhr. Der Timer führt dieselben Paketpflege-Schritte wie die manuelle Dashboard-Aktion aus: Paketlisten aktualisieren, Pakete aktualisieren, nicht mehr benötigte Pakete entfernen, den Paketcache leeren und Journal-Einträge älter als 14 Tage löschen.
+
+Die automatische Wartung startet keinen Neustart. Läuft der Raspberry Pi zum geplanten Zeitpunkt nicht, wird der verpasste Lauf nach dem nächsten Start nachgeholt. Die Einstellung lässt sich im Dashboard im Abschnitt „Automatische Wartung“ aktivieren oder deaktivieren.
+
+- Dienst: `pi5-auto-maintenance.service`
+- Timer: `pi5-auto-maintenance.timer`
+- Protokoll: `/var/log/pi5-basics-maintenance.log`
+
+Status und nächsten Lauf anzeigen:
+
+~~~bash
+systemctl status pi5-auto-maintenance.timer
+systemctl list-timers pi5-auto-maintenance.timer
+sudo tail -n 100 /var/log/pi5-basics-maintenance.log
+~~~
+
+Manuell aktivieren oder deaktivieren:
+
+~~~bash
+sudo systemctl enable --now pi5-auto-maintenance.timer
+sudo systemctl disable --now pi5-auto-maintenance.timer
+~~~
+
 ## ZRAM und Journal
 
 ZRAM ergänzt den Arbeitsspeicher durch komprimierten Swap. Die Konfiguration verwendet einen moderaten Anteil; die tatsächliche Wirkung hängt von der Last ab.
@@ -87,7 +112,7 @@ Der Installer richtet einen Webdienst auf Port 8080 ein. Im Heimnetz ist er übl
 
 Das zufällig erzeugte Kennwort wird bei der Installation ausgegeben und liegt in `/etc/pi5-basics-dashboard.token`. Es kann nach der Anmeldung direkt im Dashboard im Abschnitt „Dashboard-Passwort ändern“ geändert werden. Das neue Passwort muss mindestens 12 Zeichen lang sein; nach der Änderung ist eine erneute Anmeldung erforderlich.
 
-Der Dienst läuft als unprivilegierter Benutzer `pi5dashboard`. Nur ein fest begrenzter Root-Helfer darf Wartung oder Backup ausführen. Beide Aktionen verlangen eine Bestätigung im Browser. Für Backups werden nur aktuell eingehängte Dateisysteme direkt unter `/mnt` oder `/media` angeboten. SSD Prepare und Status sind lesende Aktionen.
+Der Dienst läuft als unprivilegierter Benutzer `pi5dashboard`. Nur ein fest begrenzter Root-Helfer darf Wartung oder Backup ausführen. Die automatische wöchentliche Wartung ist standardmäßig aktiviert und kann im Dashboard ein- oder ausgeschaltet werden. Beide Aktionen verlangen eine Bestätigung im Browser. Für Backups werden nur aktuell eingehängte Dateisysteme direkt unter `/mnt` oder `/media` angeboten. SSD Prepare und Status sind lesende Aktionen.
 
 **Sicherheit:** Das Dashboard ist für ein vertrauenswürdiges privates Heimnetz gedacht. HTTP verschlüsselt die Verbindung nicht. Port 8080 keinesfalls ins Internet weiterleiten. Für Fernzugriff VPN (z. B. Tailscale) oder einen korrekt eingerichteten HTTPS-Reverse-Proxy verwenden.
 
