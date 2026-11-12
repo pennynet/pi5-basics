@@ -163,11 +163,13 @@ pi5-basics/
 ├── .gitignore
 ├── config/
 │   └── defaults.conf
+│   └── terminal.env.example
 ├── dashboard/
 │   ├── app.py
 │   └── action
 ├── systemd/
-│   └── pi5-dashboard.service
+│   ├── pi5-dashboard.service
+│   └── pi5-terminal.service
 ├── commands/
 │   ├── pi-status
 │   ├── pi-maintenance
