@@ -8,21 +8,49 @@ case "$ACTION" in
       echo "nftables fehlt; Terminal-Firewall kann nicht aktiviert werden." >&2
       exit 1
     }
+    command -v ip >/dev/null 2>&1 || {
+      echo "iproute2 fehlt; LAN-Netz kann nicht ermittelt werden." >&2
+      exit 1
+    }
+
+    # Restrict inbound terminal connections to the subnet(s) of the default-route
+    # interface. This avoids opening the terminal to every RFC1918/VPN network.
+    LAN_IFACE4="$(ip -4 route show default 2>/dev/null | awk 'NR==1 {for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')"
+    LAN_IFACE6="$(ip -6 route show default 2>/dev/null | awk 'NR==1 {for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')"
+    LAN_NETS4=""
+    LAN_NETS6=""
+    if [ -n "$LAN_IFACE4" ]; then
+      LAN_NETS4="$(ip -o -4 addr show dev "$LAN_IFACE4" scope global | awk '{print $4}' | sort -u)"
+    fi
+    if [ -n "$LAN_IFACE6" ]; then
+      LAN_NETS6="$(ip -o -6 addr show dev "$LAN_IFACE6" scope global | awk '{print $4}' | sort -u)"
+    fi
+    if [ -z "$LAN_NETS4" ] && [ -z "$LAN_NETS6" ]; then
+      echo "Kein lokales Netz am Default-Route-Interface gefunden; Terminal bleibt geschlossen." >&2
+      exit 1
+    fi
+
     # This table is exclusively managed by pi5-basics.
     nft delete table inet pi5_terminal 2>/dev/null || true
-    nft -f - <<'NFT'
+    {
+      cat <<'NFT'
 add table inet pi5_terminal
 add chain inet pi5_terminal input { type filter hook input priority -5; policy accept; }
 add rule inet pi5_terminal input tcp dport 7681 ip saddr 127.0.0.0/8 accept
-add rule inet pi5_terminal input tcp dport 7681 ip saddr 169.254.0.0/16 accept
-add rule inet pi5_terminal input tcp dport 7681 ip saddr 10.0.0.0/8 accept
-add rule inet pi5_terminal input tcp dport 7681 ip saddr 172.16.0.0/12 accept
-add rule inet pi5_terminal input tcp dport 7681 ip saddr 192.168.0.0/16 accept
 add rule inet pi5_terminal input tcp dport 7681 ip6 saddr ::1/128 accept
-add rule inet pi5_terminal input tcp dport 7681 ip6 saddr fc00::/7 accept
-add rule inet pi5_terminal input tcp dport 7681 ip6 saddr fe80::/10 accept
-add rule inet pi5_terminal input tcp dport 7681 drop
 NFT
+      if [ -n "$LAN_NETS4" ]; then
+        printf '%s\n' "$LAN_NETS4" | while IFS= read -r cidr; do
+          [ -n "$cidr" ] && printf 'add rule inet pi5_terminal input tcp dport 7681 ip saddr %s accept\n' "$cidr"
+        done
+      fi
+      if [ -n "$LAN_NETS6" ]; then
+        printf '%s\n' "$LAN_NETS6" | while IFS= read -r cidr; do
+          [ -n "$cidr" ] && printf 'add rule inet pi5_terminal input tcp dport 7681 ip6 saddr %s accept\n' "$cidr"
+        done
+      fi
+      printf '%s\n' 'add rule inet pi5_terminal input tcp dport 7681 drop'
+    } | nft -f -
     ;;
   remove)
     nft delete table inet pi5_terminal 2>/dev/null || true
