@@ -22,7 +22,7 @@ Der Installer bricht bei einer nicht unterstützten Debian-/Raspberry-Pi-OS-Vers
 
 ## Interaktive Einrichtung
 
-Die Fragen betreffen optionale Diagnosewerkzeuge, WLAN, Bluetooth, ZRAM, automatische Updates, Journalbegrenzung und Watchdog. Die Auswahl wird vor der Ausführung angezeigt und muss bestätigt werden.
+Die Fragen betreffen optionale Diagnosewerkzeuge, WLAN, Bluetooth, ZRAM, automatische Updates, Journalbegrenzung und Watchdog. Zusätzlich fragt der Installer, ob ein Lüfter am dedizierten 4-Pin-FAN-Anschluss des Pi 5 angeschlossen ist. Bei Nein wird die Lüfterkonfiguration übersprungen. Bei Ja kann ein Profil (Normal, Leise, Kühl) oder eine benutzerdefinierte Kurve gewählt werden. Die Auswahl wird vor der Ausführung angezeigt und muss bestätigt werden.
 
 Die lokale Konfiguration liegt in /etc/pi5-basics.conf. Sie enthält einfache Ein/Aus-Werte. Nach einer Änderung kann der Installer erneut gestartet werden.
 
@@ -56,3 +56,17 @@ Es gibt derzeit keinen automatischen Deinstaller, da Paketbesitz und bereits vor
 /var/log/pi5-basics-install.log
 
 Bei Problemen bitte die letzten relevanten Zeilen zusammen mit cat /etc/os-release und pi-status prüfen.
+
+
+## Lüfter am FAN-Anschluss
+
+Die Lüftersteuerung des Raspberry Pi 5 erfolgt über die Firmware und den dedizierten 4-Pin-FAN-Anschluss. Die Abfrage im Installer bezieht sich ausdrücklich auf diesen Anschluss, nicht auf einen Lüfter an GPIO oder USB.
+
+- **Normal:** 50 / 60 / 67,5 / 75 °C mit 30 / 49 / 69 / 100 % PWM (Firmwarewerte 75 / 125 / 175 / 255).
+- **Leise:** spätere Anlaufstufen für weniger Geräusch, volle Leistung spätestens bei 75 °C.
+- **Kühl:** frühere Anlaufstufen für niedrigere Temperaturen.
+- **Benutzerdefiniert:** vier aufsteigende Temperaturschwellen (35–78 °C), vier aufsteigende PWM-Werte (0–255) und Hysterese (1–15 °C).
+
+Vor der Änderung wird `/boot/firmware/config.txt` mit Zeitstempel gesichert. Der Installer ersetzt nur seinen eigenen markierten Abschnitt und lässt andere Konfigurationseinträge stehen. Änderungen werden nach einem Neustart aktiv. Wenn kein Lüfter bestätigt wird, wird die Datei nicht angefasst.
+
+Ein 3-Pin-Lüfter oder ein Lüfter an GPIO/USB wird von dieser Abfrage nicht als kompatibler FAN-Header-Lüfter behandelt; dafür ist eine andere Steuerung nötig.
