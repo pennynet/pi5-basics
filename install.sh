@@ -43,10 +43,15 @@ fi
 . "$CONFIG_FILE"
 
 ask() {
-  local prompt="$1" current="$2" answer
+  local prompt="$1" current="$2" answer suffix
   [[ -t 0 ]] || { printf '%s' "$current"; return; }
-  read -r -p "$prompt [j/N] " answer
-  if [[ "$answer" =~ ^[JjYy]$ ]]; then printf '1'; else printf '0'; fi
+  if [[ "$current" == "1" ]]; then suffix="[J/n]"; else suffix="[j/N]"; fi
+  read -r -p "$prompt $suffix " answer
+  case "$answer" in
+    [JjYy]) printf '1' ;;
+    [Nn]) printf '0' ;;
+    *) printf '%s' "$current" ;;
+  esac
 }
 echo
 echo "Interaktive Konfiguration (Enter/Nein übernimmt den sicheren Standard Nein)."
@@ -142,6 +147,10 @@ WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
   systemctl enable --now pi5-basics-block-radios.service
+else
+  systemctl disable --now pi5-basics-block-radios.service 2>/dev/null || true
+  rm -f /etc/systemd/system/pi5-basics-block-radios.service /usr/local/sbin/pi5-basics-block-radios
+  systemctl daemon-reload
 fi
 
 # Install helper commands from the checked-out project.
