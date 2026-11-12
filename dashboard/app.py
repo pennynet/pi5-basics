@@ -10,7 +10,7 @@ import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs
 
 TOKEN_FILE = Path("/etc/pi5-basics-dashboard.token")
 PORT = 8080
@@ -149,7 +149,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
         network = network_data()
-        host = urlsplit("//" + self.headers.get("Host", "")).hostname or socket.gethostname()
+        host = self.connection.getsockname()[0].split("%", 1)[0]
         terminal_host = f"[{host}]" if ":" in host else host
         terminal_url = f"http://{terminal_host}:7681/"
         targets = mounted_targets()
