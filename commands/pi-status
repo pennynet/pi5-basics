@@ -17,11 +17,11 @@ else
   network_info=""
 fi
 if [ -n "$network_info" ]; then
-  printf '%s\\n' "$network_info"
+  printf '%s\n' "$network_info"
 else
   network_ips="$(hostname -I 2>/dev/null | xargs)"
   if [ -n "$network_ips" ]; then
-    printf 'IP-Adresse(n): %s\\n' "$network_ips"
+    printf 'IP-Adresse(n): %s\n' "$network_ips"
   else
     echo "Keine Netzwerkadresse ermittelbar (iproute2/Verbindung prüfen)."
   fi
@@ -33,9 +33,9 @@ if command -v vcgencmd >/dev/null 2>&1; then
   temp_output="$(vcgencmd measure_temp 2>/dev/null || true)"
 fi
 if printf '%s' "$temp_output" | grep -Eq "temp=[0-9]+([.][0-9]+)?'C"; then
-  printf '%s\\n' "$temp_output"
+  printf '%s\n' "$temp_output"
 elif [ -r /sys/class/thermal/thermal_zone0/temp ]; then
-  awk '{printf "%.1f °C\\n",$1/1000}'
+  awk '{printf "%.1f °C\n",$1/1000}'
 else
   echo "Temperatur nicht verfügbar (vcgencmd und thermal_zone0 fehlgeschlagen)."
 fi
