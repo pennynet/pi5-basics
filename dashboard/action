@@ -20,6 +20,24 @@ case "$ACTION" in
     [[ -f "$AUTH" ]] || exit 0
     ssh-keygen -lf "$AUTH" 2>/dev/null || true
     ;;
+  ssh-key-delete)
+    IFS= read -r FINGERPRINT || { echo "Kein Fingerabdruck empfangen." >&2; exit 2; }
+    [[ "$FINGERPRINT" =~ ^SHA256:[A-Za-z0-9_-]+$ ]] || { echo "Ungültiger Fingerabdruck." >&2; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden." >&2; exit 1; }
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    [[ -f "$AUTH" ]] || { echo "Keine SSH-Schlüssel vorhanden."; exit 1; }
+    TMP="$(mktemp)"
+    trap 'rm -f "$TMP"' EXIT
+    REMOVED=0
+    while IFS= read -r KEY || [[ -n "$KEY" ]]; do
+      KEY_FP="$(printf '%s\\n' "$KEY" | ssh-keygen -lf /dev/stdin 2>/dev/null | awk '{print $2}' || true)"
+      if [[ "$KEY_FP" == "$FINGERPRINT" ]]; then REMOVED=1; else printf '%s\\n' "$KEY" >> "$TMP"; fi
+    done < "$AUTH"
+    [[ "$REMOVED" -eq 1 ]] || { echo "Schlüssel nicht gefunden."; exit 1; }
+    install -o pi -g pi -m 0600 "$TMP" "$AUTH"
+    echo "SSH-Schlüssel $FINGERPRINT wurde gelöscht."
+    ;;
   ssh-key-add)
     IFS= read -r KEY || { echo "Kein Schlüssel empfangen."; exit 2; }
     [[ "$KEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-rsa)[[:space:]]+[A-Za-z0-9+/]+={0,3}([[:space:]].*)?$ ]] || { echo "Ungültiges Schlüsselformat."; exit 2; }
