@@ -10,7 +10,7 @@ import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 TOKEN_FILE = Path("/etc/pi5-basics-dashboard.token")
 PORT = 8080
@@ -125,7 +125,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("X-Frame-Options", "DENY")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'")
+        self.send_header("Content-Security-Policy", "default-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-src http://*:7681; frame-ancestors 'none'")
         if cookie:
             self.send_header("Set-Cookie", cookie)
         self.end_headers()
@@ -149,6 +149,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
         network = network_data()
+        host = urlsplit("//" + self.headers.get("Host", "")).hostname or socket.gethostname()
+        terminal_host = f"[{host}]" if ":" in host else host
+        terminal_url = f"http://{terminal_host}:7681/"
         targets = mounted_targets()
         target_options = "".join(f'<option value="{html.escape(p, quote=True)}">{html.escape(p)}</option>' for p in targets)
         backup_form = (f'<form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="backup"><label>Gemountetes Backup-Ziel</label><select name="target" required>{target_options}</select><label><input type="checkbox" name="confirm" value="yes" required> Ich bestätige, dass das ausgewählte Laufwerk mein Backup-Ziel ist.</label><button {"disabled" if not targets else ""}>Backup starten</button></form>' if targets else '<p class="muted">Kein eigenes Laufwerk unter /mnt oder /media eingehängt. Backup ist deshalb deaktiviert.</p>')
@@ -161,6 +164,7 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
 <div class="card"><h2>Gerät</h2><div class="value">{html.escape(model)}</div><p class="muted">Aktualisiert beim Neuladen der Seite.</p><a href="/">Status aktualisieren</a></div>
+<section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Benutzer pi5terminal. Ein gleichzeitiger Browser-Client. Das Terminal hat keine sudo-Rechte.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. <a href="{html.escape(terminal_url, quote=True)}" target="_blank" rel="noopener noreferrer">Terminal in neuem Tab öffnen</a></p></section>
 <section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required><button>Passwort ändern</button></form></section>
 <div class="actions">
 <section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
