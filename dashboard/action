@@ -20,6 +20,186 @@ case "$ACTION" in
     [[ -f "$AUTH" ]] || exit 0
     ssh-keygen -lf "$AUTH" 2>/dev/null || true
     ;;
+  ssh-password-status)
+    if [[ -f /etc/ssh/sshd_config.d/99-pi5-basics.conf ]] && grep -qE '^PasswordAuthentication[[:space:]]+no || { echo "Kein Fingerabdruck empfangen." >&2; exit 2; }
+    [[ "$FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]+={0,2}$ ]] || { echo "Ungültiger Fingerabdruck." >&2; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden." >&2; exit 1; }
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    [[ -f "$AUTH" ]] || { echo "Keine SSH-Schlüssel vorhanden."; exit 1; }
+    KEY_COUNT="$(ssh-keygen -lf "$AUTH" 2>/dev/null | wc -l)"
+    if [[ "$KEY_COUNT" -le 1 ]] && [[ -f /etc/ssh/sshd_config.d/99-pi5-basics.conf ]] && grep -qE '^PasswordAuthentication[[:space:]]+no
+    trap 'rm -f "$TMP"' EXIT
+    REMOVED=0
+    while IFS= read -r KEY || [[ -n "$KEY" ]]; do
+      KEY_FP="$(printf '%s\\n' "$KEY" | ssh-keygen -lf /dev/stdin 2>/dev/null | awk '{print $2}' || true)"
+      if [[ "$KEY_FP" == "$FINGERPRINT" ]]; then REMOVED=1; else printf '%s\\n' "$KEY" >> "$TMP"; fi
+    done < "$AUTH"
+    [[ "$REMOVED" -eq 1 ]] || { echo "Schlüssel nicht gefunden."; exit 1; }
+    install -o pi -g pi -m 0600 "$TMP" "$AUTH"
+    echo "SSH-Schlüssel $FINGERPRINT wurde gelöscht."
+    ;;
+  ssh-key-add)
+    IFS= read -r KEY || { echo "Kein Schlüssel empfangen."; exit 2; }
+    [[ "$KEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-rsa)[[:space:]]+[A-Za-z0-9+/]+={0,3}([[:space:]].*)?$ ]] || { echo "Ungültiges Schlüsselformat."; exit 2; }
+    printf '%s\n' "$KEY" | ssh-keygen -lf /dev/stdin >/dev/null 2>&1 || { echo "Schlüsselprüfung fehlgeschlagen."; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden."; exit 1; }
+    install -d -o pi -g pi -m 0700 "$PI_HOME/.ssh"
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    touch "$AUTH"; chown pi:pi "$AUTH"; chmod 0600 "$AUTH"
+    grep -Fxq -- "$KEY" "$AUTH" || printf '%s\n' "$KEY" >> "$AUTH"
+    echo "Öffentlicher Schlüssel für pi installiert."
+    ;;
+  maintenance-status)
+    if systemctl is-enabled --quiet pi5-auto-maintenance.timer; then
+      echo "Automatische Wartung: aktiviert"
+      systemctl list-timers --all pi5-auto-maintenance.timer --no-pager --no-legend
+    else
+      echo "Automatische Wartung: deaktiviert"
+    fi
+    ;;
+  maintenance-enable)
+    systemctl enable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung aktiviert (sonntags um 04:00 Uhr)."
+    ;;
+  maintenance-disable)
+    systemctl disable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung deaktiviert."
+    ;;
+  shutdown|reboot)
+    [[ $# -eq 1 ]] || { echo "Usage: shutdown | reboot" >&2; exit 2; }
+    if [[ "$ACTION" == "shutdown" ]]; then
+      systemctl poweroff --no-block
+    else
+      systemctl reboot --no-block
+    fi
+    ;;
+  maintenance)
+    apt-get update
+    apt-get upgrade -y
+    apt-get autoremove --purge -y
+    apt-get clean
+    journalctl --vacuum-time=14d
+    echo "Wartung abgeschlossen."
+    ;;
+  backup)
+    [[ $# -eq 2 ]] || { echo "Backup target required" >&2; exit 2; }
+    TARGET="$2"
+    case "$TARGET" in /mnt/*|/media/*) ;; *) echo "Target must be under /mnt or /media" >&2; exit 2 ;; esac
+    [[ -d "$TARGET" && "$TARGET" != "/" && "$(realpath "$TARGET")" == "$TARGET" ]] || { echo "Ungültiges Ziel" >&2; exit 2; }
+    mountpoint -q "$TARGET" || { echo "Ziel ist kein eigener Mountpoint" >&2; exit 2; }
+    STAMP="$(date +%F_%H%M%S)"
+    DEST="$TARGET/pi5-backup-$STAMP"
+    mkdir -m 0750 "$DEST"
+    rsync -aHAX --numeric-ids --one-file-system --info=progress2 /etc /home /root /boot/firmware "$DEST/"
+    echo "Backup erstellt: $DEST"
+    echo "Datei-Backup, kein garantiert bootfähiges Image."
+    ;;
+  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | shutdown | reboot | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
+esac
+ /etc/ssh/sshd_config.d/99-pi5-basics.conf; then
+      echo "Der letzte SSH-Schlüssel kann nicht gelöscht werden, solange die Passwortanmeldung deaktiviert ist. Bitte zuerst die Passwortanmeldung erlauben."
+      exit 1
+    fi
+    TMP="$(mktemp)"
+    trap 'rm -f "$TMP"' EXIT
+    REMOVED=0
+    while IFS= read -r KEY || [[ -n "$KEY" ]]; do
+      KEY_FP="$(printf '%s\\n' "$KEY" | ssh-keygen -lf /dev/stdin 2>/dev/null | awk '{print $2}' || true)"
+      if [[ "$KEY_FP" == "$FINGERPRINT" ]]; then REMOVED=1; else printf '%s\\n' "$KEY" >> "$TMP"; fi
+    done < "$AUTH"
+    [[ "$REMOVED" -eq 1 ]] || { echo "Schlüssel nicht gefunden."; exit 1; }
+    install -o pi -g pi -m 0600 "$TMP" "$AUTH"
+    echo "SSH-Schlüssel $FINGERPRINT wurde gelöscht."
+    ;;
+  ssh-key-add)
+    IFS= read -r KEY || { echo "Kein Schlüssel empfangen."; exit 2; }
+    [[ "$KEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-rsa)[[:space:]]+[A-Za-z0-9+/]+={0,3}([[:space:]].*)?$ ]] || { echo "Ungültiges Schlüsselformat."; exit 2; }
+    printf '%s\n' "$KEY" | ssh-keygen -lf /dev/stdin >/dev/null 2>&1 || { echo "Schlüsselprüfung fehlgeschlagen."; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden."; exit 1; }
+    install -d -o pi -g pi -m 0700 "$PI_HOME/.ssh"
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    touch "$AUTH"; chown pi:pi "$AUTH"; chmod 0600 "$AUTH"
+    grep -Fxq -- "$KEY" "$AUTH" || printf '%s\n' "$KEY" >> "$AUTH"
+    echo "Öffentlicher Schlüssel für pi installiert."
+    ;;
+  maintenance-status)
+    if systemctl is-enabled --quiet pi5-auto-maintenance.timer; then
+      echo "Automatische Wartung: aktiviert"
+      systemctl list-timers --all pi5-auto-maintenance.timer --no-pager --no-legend
+    else
+      echo "Automatische Wartung: deaktiviert"
+    fi
+    ;;
+  maintenance-enable)
+    systemctl enable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung aktiviert (sonntags um 04:00 Uhr)."
+    ;;
+  maintenance-disable)
+    systemctl disable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung deaktiviert."
+    ;;
+  shutdown|reboot)
+    [[ $# -eq 1 ]] || { echo "Usage: shutdown | reboot" >&2; exit 2; }
+    if [[ "$ACTION" == "shutdown" ]]; then
+      systemctl poweroff --no-block
+    else
+      systemctl reboot --no-block
+    fi
+    ;;
+  maintenance)
+    apt-get update
+    apt-get upgrade -y
+    apt-get autoremove --purge -y
+    apt-get clean
+    journalctl --vacuum-time=14d
+    echo "Wartung abgeschlossen."
+    ;;
+  backup)
+    [[ $# -eq 2 ]] || { echo "Backup target required" >&2; exit 2; }
+    TARGET="$2"
+    case "$TARGET" in /mnt/*|/media/*) ;; *) echo "Target must be under /mnt or /media" >&2; exit 2 ;; esac
+    [[ -d "$TARGET" && "$TARGET" != "/" && "$(realpath "$TARGET")" == "$TARGET" ]] || { echo "Ungültiges Ziel" >&2; exit 2; }
+    mountpoint -q "$TARGET" || { echo "Ziel ist kein eigener Mountpoint" >&2; exit 2; }
+    STAMP="$(date +%F_%H%M%S)"
+    DEST="$TARGET/pi5-backup-$STAMP"
+    mkdir -m 0750 "$DEST"
+    rsync -aHAX --numeric-ids --one-file-system --info=progress2 /etc /home /root /boot/firmware "$DEST/"
+    echo "Backup erstellt: $DEST"
+    echo "Datei-Backup, kein garantiert bootfähiges Image."
+    ;;
+  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | shutdown | reboot | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
+esac
+ /etc/ssh/sshd_config.d/99-pi5-basics.conf; then
+      echo "SSH-Passwortanmeldung: deaktiviert"
+    else
+      echo "SSH-Passwortanmeldung: aktiviert"
+    fi
+    ;;
+  ssh-password-auth)
+    [[ $# -eq 2 && ( "$2" == "enable" || "$2" == "disable" ) ]] || { echo "Usage: ssh-password-auth enable|disable" >&2; exit 2; }
+    SSH_DROPIN=/etc/ssh/sshd_config.d/99-pi5-basics.conf
+    if [[ "$2" == "disable" ]]; then
+      PI_HOME="$(getent passwd pi | cut -d: -f6)"
+      AUTH="$PI_HOME/.ssh/authorized_keys"
+      KEY_COUNT=0
+      [[ ! -f "$AUTH" ]] || KEY_COUNT="$(ssh-keygen -lf "$AUTH" 2>/dev/null | wc -l)"
+      [[ "$KEY_COUNT" -ge 1 ]] || { echo "Passwortanmeldung kann erst deaktiviert werden, wenn mindestens ein gültiger SSH-Schlüssel installiert ist."; exit 1; }
+      printf '%s\n' 'PasswordAuthentication no' 'KbdInteractiveAuthentication no' >"$SSH_DROPIN"
+    else
+      printf '%s\n' 'PasswordAuthentication yes' 'KbdInteractiveAuthentication yes' >"$SSH_DROPIN"
+    fi
+    chmod 0644 "$SSH_DROPIN"
+    if ! /usr/sbin/sshd -t; then
+      rm -f "$SSH_DROPIN"
+      echo "SSH-Konfiguration ungültig; Änderung wurde zurückgenommen." >&2
+      exit 1
+    fi
+    systemctl reload ssh
+    echo "SSH-Passwortanmeldung: $([[ "$2" == "enable" ]] && echo aktiviert || echo deaktiviert)"
+    ;;
   ssh-key-delete)
     IFS= read -r FINGERPRINT || { echo "Kein Fingerabdruck empfangen." >&2; exit 2; }
     [[ "$FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]+={0,2}$ ]] || { echo "Ungültiger Fingerabdruck." >&2; exit 2; }
@@ -27,6 +207,81 @@ case "$ACTION" in
     [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden." >&2; exit 1; }
     AUTH="$PI_HOME/.ssh/authorized_keys"
     [[ -f "$AUTH" ]] || { echo "Keine SSH-Schlüssel vorhanden."; exit 1; }
+    KEY_COUNT="$(ssh-keygen -lf "$AUTH" 2>/dev/null | wc -l)"
+    if [[ "$KEY_COUNT" -le 1 ]] && [[ -f /etc/ssh/sshd_config.d/99-pi5-basics.conf ]] && grep -qE '^PasswordAuthentication[[:space:]]+no
+    trap 'rm -f "$TMP"' EXIT
+    REMOVED=0
+    while IFS= read -r KEY || [[ -n "$KEY" ]]; do
+      KEY_FP="$(printf '%s\\n' "$KEY" | ssh-keygen -lf /dev/stdin 2>/dev/null | awk '{print $2}' || true)"
+      if [[ "$KEY_FP" == "$FINGERPRINT" ]]; then REMOVED=1; else printf '%s\\n' "$KEY" >> "$TMP"; fi
+    done < "$AUTH"
+    [[ "$REMOVED" -eq 1 ]] || { echo "Schlüssel nicht gefunden."; exit 1; }
+    install -o pi -g pi -m 0600 "$TMP" "$AUTH"
+    echo "SSH-Schlüssel $FINGERPRINT wurde gelöscht."
+    ;;
+  ssh-key-add)
+    IFS= read -r KEY || { echo "Kein Schlüssel empfangen."; exit 2; }
+    [[ "$KEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-rsa)[[:space:]]+[A-Za-z0-9+/]+={0,3}([[:space:]].*)?$ ]] || { echo "Ungültiges Schlüsselformat."; exit 2; }
+    printf '%s\n' "$KEY" | ssh-keygen -lf /dev/stdin >/dev/null 2>&1 || { echo "Schlüsselprüfung fehlgeschlagen."; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden."; exit 1; }
+    install -d -o pi -g pi -m 0700 "$PI_HOME/.ssh"
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    touch "$AUTH"; chown pi:pi "$AUTH"; chmod 0600 "$AUTH"
+    grep -Fxq -- "$KEY" "$AUTH" || printf '%s\n' "$KEY" >> "$AUTH"
+    echo "Öffentlicher Schlüssel für pi installiert."
+    ;;
+  maintenance-status)
+    if systemctl is-enabled --quiet pi5-auto-maintenance.timer; then
+      echo "Automatische Wartung: aktiviert"
+      systemctl list-timers --all pi5-auto-maintenance.timer --no-pager --no-legend
+    else
+      echo "Automatische Wartung: deaktiviert"
+    fi
+    ;;
+  maintenance-enable)
+    systemctl enable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung aktiviert (sonntags um 04:00 Uhr)."
+    ;;
+  maintenance-disable)
+    systemctl disable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung deaktiviert."
+    ;;
+  shutdown|reboot)
+    [[ $# -eq 1 ]] || { echo "Usage: shutdown | reboot" >&2; exit 2; }
+    if [[ "$ACTION" == "shutdown" ]]; then
+      systemctl poweroff --no-block
+    else
+      systemctl reboot --no-block
+    fi
+    ;;
+  maintenance)
+    apt-get update
+    apt-get upgrade -y
+    apt-get autoremove --purge -y
+    apt-get clean
+    journalctl --vacuum-time=14d
+    echo "Wartung abgeschlossen."
+    ;;
+  backup)
+    [[ $# -eq 2 ]] || { echo "Backup target required" >&2; exit 2; }
+    TARGET="$2"
+    case "$TARGET" in /mnt/*|/media/*) ;; *) echo "Target must be under /mnt or /media" >&2; exit 2 ;; esac
+    [[ -d "$TARGET" && "$TARGET" != "/" && "$(realpath "$TARGET")" == "$TARGET" ]] || { echo "Ungültiges Ziel" >&2; exit 2; }
+    mountpoint -q "$TARGET" || { echo "Ziel ist kein eigener Mountpoint" >&2; exit 2; }
+    STAMP="$(date +%F_%H%M%S)"
+    DEST="$TARGET/pi5-backup-$STAMP"
+    mkdir -m 0750 "$DEST"
+    rsync -aHAX --numeric-ids --one-file-system --info=progress2 /etc /home /root /boot/firmware "$DEST/"
+    echo "Backup erstellt: $DEST"
+    echo "Datei-Backup, kein garantiert bootfähiges Image."
+    ;;
+  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | shutdown | reboot | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
+esac
+ /etc/ssh/sshd_config.d/99-pi5-basics.conf; then
+      echo "Der letzte SSH-Schlüssel kann nicht gelöscht werden, solange die Passwortanmeldung deaktiviert ist. Bitte zuerst die Passwortanmeldung erlauben."
+      exit 1
+    fi
     TMP="$(mktemp)"
     trap 'rm -f "$TMP"' EXIT
     REMOVED=0
