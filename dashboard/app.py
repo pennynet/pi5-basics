@@ -288,7 +288,28 @@ class Handler(BaseHTTPRequestHandler):
         if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
         if action in ("shutdown", "reboot"):
-            output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=10)
+            # Send a durable result page before starting the power action. The
+            # browser can then show the shutdown message or retry after reboot.
+            if action == "shutdown":
+                body = '<section class="card" style="max-width:620px;margin:50px auto;text-align:center"><h2>Ende</h2><p>Der Raspberry Pi wird heruntergefahren. Das Dashboard ist danach nicht mehr erreichbar.</p><p class="muted">Du kannst dieses Fenster jetzt schließen.</p></section>'
+                self.send(200, page("Ende", body))
+            else:
+                body = '<section class="card" style="max-width:620px;margin:50px auto;text-align:center"><h2>Neustart läuft</h2><p>Der Raspberry Pi startet neu. Diese Seite wechselt automatisch zur Anmeldung, sobald das Dashboard wieder erreichbar ist.</p><p class="muted">Bitte warte einen Moment …</p></section>'
+                content = page("Neustart", body).replace(
+                    '<meta name="viewport" content="width=device-width,initial-scale=1">',
+                    '<meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="5;url=/">'
+                )
+                self.send(200, content)
+            self.wfile.flush()
+            try:
+                subprocess.Popen(
+                    ["/bin/sh", "-c", f"sleep 3; exec sudo -n /usr/local/sbin/pi5-dashboard-action {action}"],
+                    stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, start_new_session=True
+                )
+            except Exception as exc:
+                print(f"Could not start {action}: {exc}", flush=True)
+            return
         elif action in ("maintenance-enable", "maintenance-disable"):
             output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=30)
         elif action == "status":
