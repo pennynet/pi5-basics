@@ -4,7 +4,8 @@ export DEBIAN_FRONTEND=noninteractive
 [[ $EUID -eq 0 ]] || { echo "Must run as root" >&2; exit 1; }
 ACTION="${1:-}"
 PI_HOME="$(getent passwd pi | cut -d: -f6)"
-SSH_DROPIN=/etc/ssh/sshd_config.d/99-pi5-basics.conf
+SSH_DROPIN=/etc/ssh/sshd_config.d/00-pi5-basics.conf
+SSH_LEGACY_DROPIN=/etc/ssh/sshd_config.d/99-pi5-basics.conf
 
 case "$ACTION" in
   set-password)
@@ -46,7 +47,11 @@ case "$ACTION" in
       echo "SSH-Konfiguration ungültig; Änderung wurde zurückgenommen." >&2
       exit 1
     fi
+    rm -f "$SSH_LEGACY_DROPIN"
     systemctl reload ssh
+    EFFECTIVE="$(sshd -T 2>/dev/null | awk '$1=="passwordauthentication" {print $2}')"
+    EXPECTED="$([[ "$2" == enable ]] && echo yes || echo no)"
+    [[ "$EFFECTIVE" == "$EXPECTED" ]] || { echo "SSH-Einstellung nicht wirksam (sshd meldet: $EFFECTIVE)." >&2; exit 1; }
     echo "SSH-Passwortanmeldung: $([[ "$2" == enable ]] && echo aktiviert || echo deaktiviert)"
     ;;
   ssh-key-add)
