@@ -221,7 +221,7 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">Netzwerk / IPv4</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
 
-<section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Benutzer pi5terminal. Ein gleichzeitiger Browser-Client. Das Terminal hat keine sudo-Rechte.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
+<section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Administrator pi5terminal mit vollständigen sudo-Rechten. Ein gleichzeitiger Browser-Client.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
 <section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></form></section>
 
 """
@@ -243,6 +243,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Location", "/")
                 self.send_header("Set-Cookie", f"pi5session={sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800")
                 self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", "0")
                 self.end_headers()
                 return
             time.sleep(1)
