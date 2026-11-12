@@ -11,7 +11,6 @@ WorkingDirectory=/opt/pi5-basics-dashboard
 ExecStart=/usr/bin/python3 /opt/pi5-basics-dashboard/app.py
 Restart=on-failure
 RestartSec=3
-NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
