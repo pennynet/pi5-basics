@@ -101,14 +101,14 @@ sudo journalctl -u pi5-dashboard -n 50 --no-pager
 
 ## Interaktives Linux-Terminal
 
-Der Installer lädt `ttyd` passend zur Systemarchitektur (arm64, armhf oder amd64) aus dem offiziellen GitHub-Release von `tsl0922/ttyd` und gleicht die Datei mit dem Eintrag in `SHA256SUMS` ab und installiert die Binärdatei nach `/usr/local/bin/ttyd`. Anschließend richtet er einen eigenen Dienst auf Port 7681 ein. Falls Release-Asset oder Prüfsumme fehlen oder nicht passen, bricht der Installer vor der Einrichtung des Terminalkontos ab. Das Dashboard bettet das Terminal ein; alternativ kann es separat unter `http://<pi-ip>:7681` geöffnet werden.
+Der Installer lädt `ttyd` passend zur Systemarchitektur (arm64, armhf oder amd64) aus dem offiziellen GitHub-Release von `tsl0922/ttyd`, prüft die SHA-256-Prüfsumme und installiert die Binärdatei nach `/usr/local/bin/ttyd`. ttyd läuft ausschließlich auf Loopback-Port 7682. Nginx stellt den Zugang auf Port 7681 bereit, übernimmt HTTP-Basic-Authentication und leitet WebSocket-Verbindungen an ttyd weiter. Das Dashboard bettet das Terminal ein; alternativ kann es separat unter `http://<pi-ip>:7681` geöffnet werden.
 
 - Linux-Benutzer: `pi5terminal`, Shell: Bash, Home: `/home/pi5terminal`.
 - Eine gleichzeitige Browserverbindung (`--max-clients 1`).
-- Separate HTTP-Basic-Authentication-Zugangsdaten; das Passwort wird bei der ersten Installation zufällig erzeugt und bei erneuter Installation beibehalten.
-- Zugangsdaten liegen in `/etc/pi5-basics-terminal.env`, Eigentümer root, Modus 0600. Später anzeigen: `sudo cat /etc/pi5-basics-terminal.env`.
+- Separate HTTP-Basic-Authentication durch Nginx; das Passwort wird bei der ersten Installation zufällig erzeugt und bei erneuter Installation beibehalten.
+- Das Passwort liegt root-only in `/etc/pi5-basics-terminal.env`; Nginx verwendet eine bcrypt-Hashdatei unter `/etc/nginx/pi5-terminal.htpasswd`. Später anzeigen: `sudo cat /etc/pi5-basics-terminal.env`.
 - Der Terminalbenutzer ist nicht Mitglied der sudo-Gruppe und erhält keine sudo-Regel. Für Root-Aufgaben weiterhin SSH oder lokale Konsole mit einem administrativen Benutzer verwenden.
-- Ein eigener nftables-Input-Chain schützt ausschließlich TCP-Port 7681: erlaubt sind nur die IPv4-/IPv6-Subnetze des jeweiligen Default-Route-Interfaces sowie Loopback; andere Quelladressen werden verworfen. Dadurch bleibt der Zugriff auf das aktive LAN begrenzt. Die ausgehende Netzwerkverbindung der Shell bleibt verfügbar. Die Regel wird beim Start des Terminaldienstes angelegt und beim Stoppen entfernt.
+- Ein eigener nftables-Input-Chain schützt ausschließlich TCP-Port 7681: erlaubt sind nur die IPv4-/IPv6-Subnetze des jeweiligen Default-Route-Interfaces sowie Loopback; andere Quelladressen werden verworfen. Die Regel wird beim Start von Nginx angelegt und beim Stoppen entfernt. Der ttyd-Backend-Port 7682 ist ausschließlich an Loopback gebunden.
 - Der Dienst läuft mit gehärteten systemd-Einstellungen und ohne Linux-Capabilities.
 
 **Wichtige Transportgrenze:** ttyd verwendet hier HTTP/WebSocket ohne TLS. Basic Authentication verschlüsselt das Passwort nicht. Deshalb ausschließlich in einem vertrauenswürdigen Heimnetz betreiben, niemals Port 7681 oder 8080 ins Internet weiterleiten. Fernzugriff per VPN ist in dieser LAN-only-Konfiguration nicht freigeschaltet; dafür müsste das VPN-Subnetz ausdrücklich in die Terminal-Allowlist aufgenommen werden. Für verschlüsselten Browserzugriff im LAN beide Dienste hinter einen korrekt konfigurierten HTTPS-Reverse-Proxy stellen.
