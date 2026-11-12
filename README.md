@@ -32,12 +32,19 @@ Optional tools selected during setup: btop, tree and iotop.
 - Persistent journal limited to 200 MB; runtime journal limited to 100 MB.
 - Optional unattended package upgrades.
 - Optional radio blocking via rfkill (Wi-Fi and Bluetooth separately configurable).
-- Optional watchdog installation only when requested and a watchdog device exists.\n- Optional native Raspberry Pi 5 fan curve for a fan confirmed on the dedicated 4-pin FAN header; presets Normal, Quiet and Cool plus custom thresholds/PWM values. Existing `config.txt` is backed up before the managed section is updated.
+- Optional watchdog installation only when requested and a watchdog device exists.
+- Optional native Raspberry Pi 5 fan curve for a fan confirmed on the dedicated 4-pin FAN header; presets Normal, Quiet and Cool plus custom thresholds/PWM values. Existing `config.txt` is backed up before the managed section is updated.
 - No blanket removal of services, no disabling of systemd-random-seed, and no disabling of fstrim.
 
 The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. It does not change SSH authentication or firewall policy.
 
-### Web dashboard\n\nThe installer also deploys an authenticated dashboard at `http://raspberrypi.local:8080` (or `http://<pi-address>:8080`). It provides live-on-refresh system cards, detailed status, backup, maintenance and read-only SSD preparation. Backup and maintenance require an explicit confirmation. Backup targets are restricted to mounted filesystems directly below `/mnt` or `/media`.\n\nThe service runs as an unprivileged `pi5dashboard` user; a narrowly scoped root helper performs the two privileged actions. The random dashboard password is stored in `/etc/pi5-basics-dashboard.token`; display it with `sudo cat /etc/pi5-basics-dashboard.token`. The dashboard accepts connections only from private/local IP ranges. **Use it only on a trusted home network; do not forward port 8080 from the internet. HTTP is not encrypted**, so for access beyond a trusted LAN use a VPN such as Tailscale or add a properly configured HTTPS reverse proxy.\n\n### Helper commands
+### Web dashboard
+
+The installer also deploys an authenticated dashboard at `http://raspberrypi.local:8080` (or `http://<pi-address>:8080`). It provides live-on-refresh system cards, detailed status, backup, maintenance and read-only SSD preparation. Backup and maintenance require an explicit confirmation. Backup targets are restricted to mounted filesystems directly below `/mnt` or `/media`.
+
+The service runs as an unprivileged `pi5dashboard` user; a narrowly scoped root helper performs the two privileged actions. The random dashboard password is stored in `/etc/pi5-basics-dashboard.token`; display it with `sudo cat /etc/pi5-basics-dashboard.token`. The dashboard accepts connections only from private/local IP ranges. **Use it only on a trusted home network; do not forward port 8080 from the internet. HTTP is not encrypted**, so for access beyond a trusted LAN use a VPN such as Tailscale or add a properly configured HTTPS reverse proxy.
+
+### Helper commands
 
 | Command | Purpose |
 |---|---|
@@ -76,7 +83,8 @@ When stdin is not a terminal, the installer uses values from config/defaults.con
 | Enable ZRAM | On | Installs/configures zram-tools |
 | Automatic security updates | On | Enables unattended-upgrades timers |
 | Limit system journal | On | Applies journal size limits above |
-| Hardware watchdog | Off | Installs/enables watchdog only if /dev/watchdog exists |\n| Fan connected to Pi 5 FAN header | Off / ask during interactive setup | Configures firmware fan thresholds only after explicit confirmation; offers presets and custom values |
+| Hardware watchdog | Off | Installs/enables watchdog only if /dev/watchdog exists |
+| Fan connected to Pi 5 FAN header | Off / ask during interactive setup | Configures firmware fan thresholds only after explicit confirmation; offers presets and custom values |
 
 Edit /etc/pi5-basics.conf and rerun sudo bash install.sh to apply changed settings. The installer is designed to be repeatable, but review changes before confirming.
 
@@ -149,7 +157,12 @@ pi5-basics/
 ├── .gitignore
 ├── config/
 │   └── defaults.conf
-├── dashboard/\n│   ├── app.py\n│   └── action\n├── systemd/\n│   └── pi5-dashboard.service\n├── commands/
+├── dashboard/
+│   ├── app.py
+│   └── action
+├── systemd/
+│   └── pi5-dashboard.service
+├── commands/
 │   ├── pi-status
 │   ├── pi-maintenance
 │   ├── pi-backup
