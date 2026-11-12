@@ -243,7 +243,7 @@ for i, (temp, speed) in enumerate(zip(temps, speeds)):
     block.append(f"dtparam=fan_temp{i}_hyst={hyst}")
     block.append(f"dtparam=fan_temp{i}_speed={speed}")
 block.append(end)
-path.write_text("\\n".join(clean + [""] + block) + "\\n")
+path.write_text("\n".join(clean + [""] + block) + "\n")
 PY
     echo "Lüfterkurve in $CONFIG_TXT eingerichtet. Sicherung: $FAN_BACKUP"
     echo "Die Firmware übernimmt die Änderung nach einem Neustart."
@@ -267,8 +267,8 @@ install -d -o pi5terminal -g pi5terminal -m 0700 /home/pi5terminal
 if [[ ! -s /etc/pi5-basics-terminal.env ]]; then
   TERMINAL_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
   {
-    printf 'TERMINAL_USER=pi5terminal\\n'
-    printf 'TERMINAL_PASSWORD=%s\\n' "$TERMINAL_PASSWORD"
+    printf 'TERMINAL_USER=pi5terminal\n'
+    printf 'TERMINAL_PASSWORD=%s\n' "$TERMINAL_PASSWORD"
   } >/etc/pi5-basics-terminal.env
 fi
 chown root:root /etc/pi5-basics-terminal.env
