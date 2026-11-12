@@ -54,6 +54,18 @@ def system_data():
         pass
     return model, temperature, ram, uptime, os_name
 
+def network_data():
+    """Return useful interface/IP information even when the ip command is unavailable."""
+    output = run_readonly(["ip", "-brief", "address"], 5)
+    if output and not output.startswith("Fehler:") and output.strip():
+        lines = [line for line in output.splitlines() if not line.lstrip().startswith("lo ")]
+        if lines:
+            return "\\n".join(lines)
+    fallback = run_readonly(["hostname", "-I"], 5).strip()
+    if fallback and not fallback.startswith("Fehler:"):
+        return "IP-Adresse(n): " + fallback
+    return "Keine Netzwerkadresse ermittelbar (iproute2/Netzwerkverbindung prüfen)."
+
 def mounted_targets():
     found = []
     for root in (Path("/mnt"), Path("/media")):
@@ -136,6 +148,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/logout":
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
+        network = network_data()
         targets = mounted_targets()
         target_options = "".join(f'<option value="{html.escape(p, quote=True)}">{html.escape(p)}</option>' for p in targets)
         backup_form = (f'<form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="backup"><label>Gemountetes Backup-Ziel</label><select name="target" required>{target_options}</select><label><input type="checkbox" name="confirm" value="yes" required> Ich bestätige, dass das ausgewählte Laufwerk mein Backup-Ziel ist.</label><button {"disabled" if not targets else ""}>Backup starten</button></form>' if targets else '<p class="muted">Kein eigenes Laufwerk unter /mnt oder /media eingehängt. Backup ist deshalb deaktiviert.</p>')
@@ -145,6 +158,7 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">RAM belegt / gesamt</div><div class="value">{html.escape(ram)}</div></div>
 <div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
 <div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
+<div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
 <div class="card"><h2>Gerät</h2><div class="value">{html.escape(model)}</div><p class="muted">Aktualisiert beim Neuladen der Seite.</p><a href="/">Status aktualisieren</a></div>
 <div class="actions">
