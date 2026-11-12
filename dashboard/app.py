@@ -217,8 +217,6 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">RAM-Auslastung</div><div class="value">{html.escape(ram)}</div><div class="metricbar { "bad" if ram_pct >= 90 else "warn" if ram_pct >= 75 else "good" }"><span style="width:{ram_pct}%"></span></div></div>
 <div class="card"><div class="muted">Root-Speicher</div><div class="value">{disk_pct} %</div><div class="metricbar { "bad" if disk_pct >= 90 else "warn" if disk_pct >= 75 else "good" }"><span style="width:{disk_pct}%"></span></div><p class="muted">{html.escape(disk_info)}</p></div>
 <div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
-<div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
-<div class="card"><div class="muted">Netzwerk / IPv4</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
 
 <section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Administrator pi5terminal mit vollständigen sudo-Rechten. Ein gleichzeitiger Browser-Client.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
@@ -227,7 +225,8 @@ class Handler(BaseHTTPRequestHandler):
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
         header_right = f'<div class="header-actions"><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
-        self.send(200, page("Dashboard", body, header_right=header_right, header_label=model))
+        header_info = f"{model} · {os_name} · IPv4: {network.replace(chr(10), ' | ')}"
+        self.send(200, page("Dashboard", body, header_right=header_right, header_label=header_info))
 
     def do_POST(self):
         global DASHBOARD_PASSWORD
