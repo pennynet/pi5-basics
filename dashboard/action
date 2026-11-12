@@ -2,12 +2,12 @@
 set -Eeuo pipefail
 export DEBIAN_FRONTEND=noninteractive
 if [[ $EUID -ne 0 ]]; then echo "Must run as root" >&2; exit 1; fi
-ACTION="\${1:-}"
+ACTION="${1:-}"
 case "$ACTION" in
   set-password)
     [[ $# -eq 1 ]] || { echo "Usage: set-password" >&2; exit 2; }
     IFS= read -r NEW_PASSWORD || { echo "Kein Passwort empfangen." >&2; exit 2; }
-    [[ \${#NEW_PASSWORD} -ge 12 && \${#NEW_PASSWORD} -le 256 ]] || { echo "Passwort muss 12 bis 256 Zeichen lang sein." >&2; exit 2; }
+    [[ ${#NEW_PASSWORD} -ge 12 && ${#NEW_PASSWORD} -le 256 ]] || { echo "Passwort muss 12 bis 256 Zeichen lang sein." >&2; exit 2; }
     install -o root -g pi5dashboard -m 0640 /dev/null /etc/pi5-basics-dashboard.token.new
     printf '%s\n' "$NEW_PASSWORD" >/etc/pi5-basics-dashboard.token.new
     mv -f /etc/pi5-basics-dashboard.token.new /etc/pi5-basics-dashboard.token
