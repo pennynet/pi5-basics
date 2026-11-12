@@ -185,7 +185,7 @@ class Handler(BaseHTTPRequestHandler):
                     f'<input type="hidden" name="csrf" value="{csrf}">'
                     '<input type="hidden" name="action" value="ssh-key-delete">'
                     f'<input type="hidden" name="fingerprint" value="{html.escape(fingerprint, quote=True)}">'
-                    '<button class="danger" type="submit">Löschen</button></form></div>'
+                    '<button class="danger" type="submit" style="width:190px;flex:0 0 190px;white-space:nowrap">Löschen</button></form></div>'
                 )
         if not ssh_keys_html:
             ssh_keys_html = '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
