@@ -295,8 +295,10 @@ install -m 0755 "$PROJECT_DIR/commands/pi-maintenance" /usr/local/bin/pi-mainten
 install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
 systemctl daemon-reload
-systemctl enable --now pi5-dashboard.service
-systemctl enable --now pi5-terminal.service
+systemctl enable pi5-dashboard.service pi5-terminal.service
+# Restart so updated application and unit files are active on repeat installs.
+systemctl restart pi5-dashboard.service
+systemctl restart pi5-terminal.service
 
 if [[ "$ENABLE_WATCHDOG" == "1" && -e /dev/watchdog ]]; then
   apt-get install -y watchdog
