@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -u
+echo "=== Raspberry Pi Status ==="
+printf 'Modell: '; tr -d '\0' </proc/device-tree/model 2>/dev/null || echo unbekannt
+printf 'OS: '; . /etc/os-release; echo "${PRETTY_NAME:-unbekannt}"
+echo
+echo "-- Uptime / Load --"; uptime
+echo
+echo "-- RAM --"; free -h
+echo
+echo "-- Speicher --"; lsblk -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS,MODEL
+echo
+echo "-- Netzwerk --"; ip -brief address 2>/dev/null || true
+echo
+echo "-- Temperatur --"
+if command -v vcgencmd >/dev/null 2>&1; then vcgencmd measure_temp; else cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null | awk '{printf "%.1f °C\n",$1/1000}'; fi
+echo
+echo "-- ZRAM --"; swapon --show 2>/dev/null || true
+echo
+echo "-- Funkstatus --"; rfkill list 2>/dev/null || true
