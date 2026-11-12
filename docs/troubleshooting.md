@@ -52,3 +52,24 @@ Wenn die Distribution eine andere zram-Implementierung verwendet, nicht mehrere 
 ## Bootet nach einer Änderung nicht
 
 SD-Karte und SSD nicht formatieren. Strom abschalten, die zuletzt geänderte Hardware-/EEPROM-Einstellung prüfen und nach Möglichkeit mit der bekannten funktionierenden SD-Konfiguration starten. Für EEPROM-Recovery die aktuelle offizielle Raspberry-Pi-Anleitung verwenden.
+
+
+## Dashboard-Terminal ist nicht erreichbar
+
+Status und Logs prüfen:
+
+~~~bash
+sudo systemctl status pi5-terminal
+sudo journalctl -u pi5-terminal -n 100 --no-pager
+sudo ss -ltnp | grep ':7681'
+sudo systemd-analyze security pi5-terminal.service
+~~~
+
+- Terminal läuft auf Port 7681; Dashboard auf Port 8080.
+- Im Browser müssen die separaten Zugangsdaten aus `sudo cat /etc/pi5-basics-terminal.env` verwendet werden.
+- Nur ein Browser-Client kann gleichzeitig verbunden sein. Einen zweiten Tab schließen und erneut versuchen.
+- Der Dienst erlaubt nur private IPv4-Netze sowie IPv6 ULA-/Link-Local-Adressen. Bei Zugriff aus einem ungewöhnlichen VPN-/Subnetz kann der systemd-IP-Filter die Verbindung blockieren.
+- Prüfen, ob `ttyd` installiert ist: `command -v ttyd`.
+- Bei Problemen nach einem Paket- oder Systemupdate: `sudo systemctl restart pi5-terminal`.
+
+Das Terminalkonto `pi5terminal` besitzt absichtlich keine sudo-Rechte. Root-Aufgaben müssen über einen separaten administrativen Zugang erfolgen.
