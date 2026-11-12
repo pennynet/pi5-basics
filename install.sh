@@ -41,6 +41,8 @@ if [[ ! -f "$CONFIG_FILE" ]]; then
 fi
 # shellcheck disable=SC1090
 . "$CONFIG_FILE"
+FAN_TEMPS=(${FAN_TEMPS:-50000 60000 67500 75000})
+FAN_SPEEDS=(${FAN_SPEEDS:-75 125 175 255})
 
 ask() {
   local prompt="$1" current="$2" answer suffix
@@ -63,6 +65,37 @@ if [[ -t 0 ]]; then
   ENABLE_AUTO_UPDATES="$(ask "Automatische Sicherheitsupdates aktivieren?" "$ENABLE_AUTO_UPDATES")"
   LIMIT_JOURNAL="$(ask "System-Journal begrenzen (200 MB persistent)?" "$LIMIT_JOURNAL")"
   ENABLE_WATCHDOG="$(ask "Hardware-Watchdog aktivieren, falls vorhanden?" "$ENABLE_WATCHDOG")"
+  FAN_PRESENT="$(ask "Ist ein Lüfter am dedizierten 4-Pin-FAN-Anschluss angeschlossen?" "${FAN_PRESENT:-0}")"
+  if [[ "$FAN_PRESENT" == "1" ]]; then
+    echo "Lüfterprofil wählen: 1) Normal  2) Leise  3) Kühl  4) Benutzerdefiniert"
+    read -r -p "Auswahl [1]: " FAN_PROFILE
+    FAN_PROFILE="${FAN_PROFILE:-1}"
+    case "$FAN_PROFILE" in
+      1) FAN_TEMPS=(50000 60000 67500 75000); FAN_SPEEDS=(75 125 175 255); FAN_HYST=5000 ;;
+      2) FAN_TEMPS=(52000 62000 69000 75000); FAN_SPEEDS=(55 100 165 255); FAN_HYST=5000 ;;
+      3) FAN_TEMPS=(45000 55000 62500 70000); FAN_SPEEDS=(90 150 205 255); FAN_HYST=4000 ;;
+      4)
+        echo "Vier aufsteigende Einschalttemperaturen in °C eingeben (z. B. 50 60 68 75)."
+        read -r -p "Temperaturen: " t1 t2 t3 t4
+        echo "Vier aufsteigende PWM-Werte von 0 bis 255 eingeben (z. B. 75 125 175 255)."
+        read -r -p "PWM-Werte: " v1 v2 v3 v4
+        read -r -p "Hysterese in °C [5]: " hyst
+        hyst="${hyst:-5}"
+        for value in "$t1" "$t2" "$t3" "$t4"; do
+          [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 35 && value <= 78 )) || { echo "Ungültige Temperatur: $value"; exit 1; }
+        done
+        for value in "$v1" "$v2" "$v3" "$v4"; do
+          [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 0 && value <= 255 )) || { echo "Ungültiger PWM-Wert: $value"; exit 1; }
+        done
+        [[ "$hyst" =~ ^[0-9]+$ ]] && (( hyst >= 1 && hyst <= 15 )) || { echo "Ungültige Hysterese."; exit 1; }
+        (( t1 < t2 && t2 < t3 && t3 < t4 && v1 <= v2 && v2 <= v3 && v3 <= v4 )) || { echo "Temperaturen und PWM-Werte müssen aufsteigend sein."; exit 1; }
+        FAN_TEMPS=("$((t1*1000))" "$((t2*1000))" "$((t3*1000))" "$((t4*1000))")
+        FAN_SPEEDS=("$v1" "$v2" "$v3" "$v4")
+        FAN_HYST="$((hyst*1000))"
+        ;;
+      *) echo "Ungültige Auswahl."; exit 1 ;;
+    esac
+  fi
 fi
 cat >"$CONFIG_FILE" <<EOF
 INSTALL_OPTIONAL_TOOLS=$INSTALL_OPTIONAL_TOOLS
@@ -72,6 +105,11 @@ ENABLE_ZRAM=$ENABLE_ZRAM
 ENABLE_AUTO_UPDATES=$ENABLE_AUTO_UPDATES
 LIMIT_JOURNAL=$LIMIT_JOURNAL
 ENABLE_WATCHDOG=$ENABLE_WATCHDOG
+FAN_PRESENT=${FAN_PRESENT:-0}
+FAN_PROFILE=${FAN_PROFILE:-1}
+FAN_TEMPS=${FAN_TEMPS[*]:-50000 60000 67500 75000}
+FAN_SPEEDS=${FAN_SPEEDS[*]:-75 125 175 255}
+FAN_HYST=${FAN_HYST:-5000}
 EOF
 chmod 0644 "$CONFIG_FILE"
 
@@ -151,6 +189,53 @@ else
   systemctl disable --now pi5-basics-block-radios.service 2>/dev/null || true
   rm -f /etc/systemd/system/pi5-basics-block-radios.service /usr/local/sbin/pi5-basics-block-radios
   systemctl daemon-reload
+fi
+
+
+# Configure the Raspberry Pi 5 firmware-controlled fan only when the user confirms
+# that a fan is connected to the dedicated 4-pin FAN header.
+if [[ "${FAN_PRESENT:-0}" == "1" ]]; then
+  CONFIG_TXT="/boot/firmware/config.txt"
+  if [[ ! -f "$CONFIG_TXT" ]]; then
+    echo "Keine $CONFIG_TXT gefunden; Lüfterkonfiguration übersprungen."
+  else
+    FAN_BACKUP="$CONFIG_TXT.pi5-basics.$(date +%Y%m%d-%H%M%S).bak"
+    cp -a "$CONFIG_TXT" "$FAN_BACKUP"
+    python3 - "$CONFIG_TXT" "${FAN_TEMPS[*]:-50000 60000 67500 75000}" "${FAN_SPEEDS[*]:-75 125 175 255}" "${FAN_HYST:-5000}" <<'PY'
+import pathlib, sys
+path = pathlib.Path(sys.argv[1])
+temps = sys.argv[2].split()
+speeds = sys.argv[3].split()
+hyst = sys.argv[4]
+if len(temps) != 4 or len(speeds) != 4:
+    raise SystemExit("Ungültige Lüfterkurve; config.txt bleibt unverändert.")
+lines = path.read_text().splitlines()
+begin, end = "# BEGIN pi5-basics fan curve", "# END pi5-basics fan curve"
+clean, inside = [], False
+for line in lines:
+    if line.strip() == begin:
+        inside = True
+        continue
+    if line.strip() == end:
+        inside = False
+        continue
+    if not inside:
+        clean.append(line)
+if inside:
+    raise SystemExit("Unvollständiger pi5-basics-Abschnitt; config.txt bleibt unverändert.")
+block = [begin, "[all]"]
+for i, (temp, speed) in enumerate(zip(temps, speeds)):
+    block.append(f"dtparam=fan_temp{i}={temp}")
+    block.append(f"dtparam=fan_temp{i}_hyst={hyst}")
+    block.append(f"dtparam=fan_temp{i}_speed={speed}")
+block.append(end)
+path.write_text("\\n".join(clean + [""] + block) + "\\n")
+PY
+    echo "Lüfterkurve in $CONFIG_TXT eingerichtet. Sicherung: $FAN_BACKUP"
+    echo "Die Firmware übernimmt die Änderung nach einem Neustart."
+  fi
+else
+  echo "Kein Lüfter am FAN-Anschluss bestätigt; Lüfterkonfiguration übersprungen."
 fi
 
 # Install helper commands from the checked-out project.
