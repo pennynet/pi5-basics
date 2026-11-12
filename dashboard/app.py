@@ -81,7 +81,7 @@ def mounted_targets():
                         pass
     return sorted(set(found))
 
-def page(title, body, csrf=""):
+def page(title, body, csrf="", header_right="", header_label="Raspberry Pi 5"):
     return """<!doctype html><html lang="de"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>pi5-basics · """ + html.escape(title) + """</title>
@@ -97,10 +97,10 @@ button,.button,select,input{font:inherit;border-radius:9px;padding:11px 14px;bor
 button{cursor:pointer;background:#174d76;border-color:#347eb3}button:hover{background:#206493}
 input[type=password]{width:100%;margin:10px 0}select{width:100%;margin:8px 0}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1218;padding:14px;border-radius:10px;max-height:420px;overflow:auto}
-form{margin:0}label{display:block;margin:8px 0}.danger{background:#54302c;border-color:#9b554b}
+form{margin:0}label{display:block;margin:8px 0}.header-actions{display:flex;align-items:center;gap:12px}.password-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.password-fields input{width:100%;margin:6px 0}@media(max-width:600px){.password-fields{grid-template-columns:1fr}}.danger{background:#54302c;border-color:#9b554b}
 a{color:var(--accent)}footer{max-width:1050px;margin:auto;padding:10px 20px 30px;color:var(--muted);font-size:.85rem}
 </style>
-<header><h1>🍓 pi5-basics · """ + html.escape(title) + """</h1><span class="muted">Raspberry Pi 5</span></header>
+<header><div><h1>🍓 pi5-basics</h1><span class="muted">""" + html.escape(header_label) + """</span></div>""" + header_right + """</header>
 <main>""" + body + """</main><footer>Nur im vertrauenswürdigen Heimnetz verwenden. Keine Portweiterleitung aus dem Internet einrichten.</footer></html>"""
 
 class Handler(BaseHTTPRequestHandler):
@@ -196,18 +196,19 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
 <div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
-<div class="card"><h2>Gerät</h2><div class="value">{html.escape(model)}</div><p class="muted">Aktualisiert beim Neuladen der Seite.</p><a href="/">Status aktualisieren</a></div>
+
 <section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Benutzer pi5terminal. Ein gleichzeitiger Browser-Client. Das Terminal hat keine sudo-Rechte.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
-<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required><button>Passwort ändern</button></form></section>
+<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></form></section>
 <div class="actions">
 <section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
 <section class="card"><h2>Maintenance</h2><p class="muted">Paketlisten und Pakete aktualisieren, verwaiste Pakete entfernen und Journal aufräumen.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="maintenance"><label><input type="checkbox" name="confirm" value="yes" required> Ich möchte die Systemwartung jetzt ausführen.</label><button class="danger">Wartung starten</button></form></section>
 <section class="card"><h2>SSD Prepare</h2><p class="muted">Rein lesende Bestandsaufnahme von Datenträgern, NVMe und Bootloader.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssd"><button>SSD-Status anzeigen</button></form></section>
 <section class="card"><h2>Systemdetails</h2><p class="muted">Ausgabe der vorhandenen pi-status-Funktion.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="status"><button>Statusdetails anzeigen</button></form></section>
 </div>
-<form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form>"""
+"""
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
-        self.send(200, page("Dashboard", body))
+        header_right = f'<div class="header-actions"><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
+        self.send(200, page("Dashboard", body, header_right=header_right, header_label=model))
 
     def do_POST(self):
         global DASHBOARD_PASSWORD
