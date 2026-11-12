@@ -239,8 +239,12 @@ class Handler(BaseHTTPRequestHandler):
             if secrets.compare_digest(supplied, DASHBOARD_PASSWORD):
                 sid = secrets.token_urlsafe(32)
                 SESSIONS[sid] = {"csrf": secrets.token_urlsafe(24)}
-                return self.send(200, page("Dashboard", '<p>Anmeldung erfolgreich. <a href="/">Dashboard öffnen</a></p>'),
-                                 f"pi5session={sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800")
+                self.send_response(303)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie", f"pi5session={sid}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                return
             time.sleep(1)
             return self.send(401, page("Anmeldung", '<p>Anmeldung fehlgeschlagen.</p><a href="/">Erneut versuchen</a>'))
         sess = self.session()
