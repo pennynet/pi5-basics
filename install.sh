@@ -257,14 +257,14 @@ chmod 0640 /etc/pi5-basics-dashboard.token
 printf '%s\n' 'pi5dashboard ALL=(root) NOPASSWD: /usr/local/sbin/pi5-dashboard-action' >/etc/sudoers.d/pi5-dashboard
 chmod 0440 /etc/sudoers.d/pi5-dashboard
 visudo -cf /etc/sudoers.d/pi5-dashboard
-systemctl daemon-reload
-systemctl enable --now pi5-dashboard.service
 
 # Install helper commands from the checked-out project.
 install -m 0755 "$PROJECT_DIR/commands/pi-status" /usr/local/bin/pi-status
 install -m 0755 "$PROJECT_DIR/commands/pi-maintenance" /usr/local/bin/pi-maintenance
 install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
+systemctl daemon-reload
+systemctl enable --now pi5-dashboard.service
 
 if [[ "$ENABLE_WATCHDOG" == "1" && -e /dev/watchdog ]]; then
   apt-get install -y watchdog
