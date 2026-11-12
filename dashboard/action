@@ -13,6 +13,22 @@ case "$ACTION" in
     mv -f /etc/pi5-basics-dashboard.token.new /etc/pi5-basics-dashboard.token
     echo "Dashboard-Passwort wurde geändert."
     ;;
+  maintenance-status)
+    if systemctl is-enabled --quiet pi5-auto-maintenance.timer; then
+      echo "Automatische Wartung: aktiviert"
+      systemctl list-timers --all pi5-auto-maintenance.timer --no-pager --no-legend
+    else
+      echo "Automatische Wartung: deaktiviert"
+    fi
+    ;;
+  maintenance-enable)
+    systemctl enable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung aktiviert (sonntags um 04:00 Uhr)."
+    ;;
+  maintenance-disable)
+    systemctl disable --now pi5-auto-maintenance.timer
+    echo "Automatische Wartung deaktiviert."
+    ;;
   maintenance)
     apt-get update
     apt-get upgrade -y
@@ -34,5 +50,5 @@ case "$ACTION" in
     echo "Backup erstellt: $DEST"
     echo "Datei-Backup, kein garantiert bootfähiges Image."
     ;;
-  *) echo "Erlaubt: maintenance | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
+  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
 esac
