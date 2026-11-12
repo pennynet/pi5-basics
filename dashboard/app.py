@@ -172,6 +172,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, page("Dashboard", body))
 
     def do_POST(self):
+        global DASHBOARD_PASSWORD
         if not self.private_client():
             return self.send(403, "Zugriff verweigert.")
         form = self.read_form()
@@ -206,7 +207,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(500, page("Passwort ändern", f"<p>Passwortänderung fehlgeschlagen: {html.escape(str(exc))}</p><a href='/'>Zurück</a>"))
             if result.returncode != 0:
                 return self.send(500, page("Passwort ändern", f"<p>{html.escape(result.stdout.strip() or 'Passwortänderung fehlgeschlagen.')}</p><a href='/'>Zurück</a>"))
-            global DASHBOARD_PASSWORD
             DASHBOARD_PASSWORD = new_password
             SESSIONS.clear()
             return self.send(200, page("Passwort geändert", '<p>Das Dashboard-Passwort wurde geändert. Bitte melde dich jetzt mit dem neuen Passwort an.</p><a href="/">Zur Anmeldung</a>'),
