@@ -29,6 +29,14 @@ case "$ACTION" in
     systemctl disable --now pi5-auto-maintenance.timer
     echo "Automatische Wartung deaktiviert."
     ;;
+  shutdown|reboot)
+    [[ $# -eq 1 ]] || { echo "Usage: shutdown | reboot" >&2; exit 2; }
+    if [[ "$ACTION" == "shutdown" ]]; then
+      systemctl poweroff --no-block
+    else
+      systemctl reboot --no-block
+    fi
+    ;;
   maintenance)
     apt-get update
     apt-get upgrade -y
@@ -50,5 +58,5 @@ case "$ACTION" in
     echo "Backup erstellt: $DEST"
     echo "Datei-Backup, kein garantiert bootfähiges Image."
     ;;
-  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
+  *) echo "Erlaubt: maintenance | maintenance-status | maintenance-enable | maintenance-disable | shutdown | reboot | backup /mnt|/media mountpoint | set-password" >&2; exit 2 ;;
 esac
