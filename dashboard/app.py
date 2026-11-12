@@ -6,6 +6,7 @@ import ipaddress
 import os
 import secrets
 import socket
+import shutil
 import subprocess
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
