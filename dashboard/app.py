@@ -321,7 +321,7 @@ class Handler(BaseHTTPRequestHandler):
             result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-auth", "enable" if enabled else "disable"],
                                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20, check=False)
             output = result.stdout.strip() or ("Einstellung gespeichert." if result.returncode == 0 else "Änderung fehlgeschlagen.")
-        if action == "ssh-key-delete":
+        elif action == "ssh-key-delete":
             fingerprint = form.get("fingerprint", [""])[0]
             if not re.fullmatch(r"SHA256:[A-Za-z0-9+/]+={0,2}", fingerprint):
                 return self.send(400, page("Fehler", "<p>Ungültiger Schlüssel-Fingerabdruck.</p><a href='/'>Zurück</a>"))
