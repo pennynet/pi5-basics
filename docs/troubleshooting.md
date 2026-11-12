@@ -69,7 +69,7 @@ sudo systemd-analyze security pi5-terminal.service
 - Im Browser müssen die separaten Zugangsdaten aus `sudo cat /etc/pi5-basics-terminal.env` verwendet werden.
 - Nur ein Browser-Client kann gleichzeitig verbunden sein. Einen zweiten Tab schließen und erneut versuchen.
 - Der nftables-Filter erlaubt nur die Subnetze der Default-Route-Schnittstelle sowie Loopback. Bei Zugriff über ein anderes Interface oder ein zusätzliches VPN-/Subnetz kann die Verbindung blockiert werden. Prüfen: `sudo nft list table inet pi5_terminal`.
-- Prüfen, ob `ttyd` installiert ist: `command -v ttyd`.
+- Prüfen, ob `ttyd` installiert ist: `command -v ttyd` und `/usr/local/bin/ttyd --version`. Bei einem Download-/Prüfsummenfehler Release-API und Architektur prüfen; der Installer bricht in diesem Fall absichtlich ab, statt eine ungeprüfte Binärdatei zu installieren.
 - Bei Problemen nach einem Paket- oder Systemupdate: `sudo systemctl restart pi5-terminal`.
 
 Das Terminalkonto `pi5terminal` besitzt absichtlich keine sudo-Rechte. Root-Aufgaben müssen über einen separaten administrativen Zugang erfolgen.
