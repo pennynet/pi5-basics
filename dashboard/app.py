@@ -74,7 +74,7 @@ def network_data():
             if ipv4:
                 lines.append(" ".join(parts[:2] + ipv4))
         if lines:
-            return "\\n".join(lines)
+            return "\n".join(lines)
     fallback = run_readonly(["/usr/bin/hostname", "-I"], 5).strip()
     ipv4 = []
     for item in fallback.split():
