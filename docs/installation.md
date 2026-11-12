@@ -12,7 +12,8 @@
 
 ~~~bash
 sudo apt update
-sudo apt install -y git\n# Git wird nur für den Download benötigt; der Installer installiert es nicht erneut.
+sudo apt install -y git
+# Git wird nur für den Download benötigt; der Installer installiert es nicht erneut.
 git clone https://github.com/pennynet/pi5-basics.git
 cd pi5-basics
 sudo bash install.sh
