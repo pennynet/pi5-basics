@@ -209,16 +209,15 @@ class Handler(BaseHTTPRequestHandler):
         body = f"""
 {alert_html}
 <div class="actions">
-<section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
+<section class="card storage-card"><h2>Backup &amp; SSD</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}<hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><p class="muted">Rein lesende Bestandsaufnahme von Datenträgern, NVMe und Bootloader.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssd"><button>SSD-Status anzeigen</button></form></section>
 <section class="card maintenance-card"><h2>Wartung</h2><p class="muted">Manuelle Systemwartung: Paketlisten und Pakete aktualisieren, verwaiste Pakete entfernen und Journal aufräumen.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="maintenance"><label><input type="checkbox" name="confirm" value="yes" required> Ich möchte die Systemwartung jetzt ausführen.</label><button class="danger">Wartung starten</button></form><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><p class="muted">Automatische Wartung: wöchentlich sonntags um 04:00 Uhr. Kein automatischer Neustart. Protokoll: /var/log/pi5-basics-maintenance.log</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="{ "maintenance-disable" if maintenance_enabled else "maintenance-enable" }"><button class="{ "danger" if maintenance_enabled else "" }">{ "Automatische Wartung deaktivieren" if maintenance_enabled else "Automatische Wartung aktivieren" }</button></form></section>
-<section class="card"><h2>SSD Prepare</h2><p class="muted">Rein lesende Bestandsaufnahme von Datenträgern, NVMe und Bootloader.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssd"><button>SSD-Status anzeigen</button></form></section>
 <section class="card"><h2>Systemdetails</h2><p class="muted">Ausgabe der vorhandenen pi-status-Funktion.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="status"><button>Statusdetails anzeigen</button></form></section>
 </div>
 <div class="grid">
 <div class="card"><div class="muted">CPU-Temperatur</div><div class="value">{html.escape(temp)}</div><div class="metricbar { "bad" if "tval" in locals() and tval >= 75 else "warn" if "tval" in locals() and tval >= 60 else "" }"><span style="width:{min(100, max(0, tval if "tval" in locals() else 0)):.0f}%"></span></div><p class="muted">Warnschwelle 75 °C</p></div>
 <div class="card"><div class="muted">RAM-Auslastung</div><div class="value">{html.escape(ram)}</div><div class="metricbar { "bad" if ram_pct >= 90 else "warn" if ram_pct >= 75 else "good" }"><span style="width:{ram_pct}%"></span></div></div>
 <div class="card"><div class="muted">Root-Speicher</div><div class="value">{disk_pct} %</div><div class="metricbar { "bad" if disk_pct >= 90 else "warn" if disk_pct >= 75 else "good" }"><span style="width:{disk_pct}%"></span></div><p class="muted">{html.escape(disk_info)}</p></div>
-<div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
+
 </div>
 
 <section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Administrator pi5terminal mit vollständigen sudo-Rechten. Ein gleichzeitiger Browser-Client.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
@@ -227,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
         header_right = f'<div class="header-actions"><form method="post" action="/action" onsubmit="return confirm(\'Raspberry Pi jetzt vollständig herunterfahren?\')"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="shutdown"><button class="danger">Shutdown</button></form><form method="post" action="/action" onsubmit="return confirm(\'Raspberry Pi jetzt neu starten?\')"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="reboot"><button>Reboot</button></form><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
-        header_info = f"{model} · {os_name} · IPv4: {network.replace(chr(10), ' | ')}"
+        header_info = f"{model} · {os_name} · IPv4: {network.replace(chr(10), ' | ')} · Laufzeit: {uptime}"
         self.send(200, page("Dashboard", body, header_right=header_right, header_label=header_info))
 
     def do_POST(self):
