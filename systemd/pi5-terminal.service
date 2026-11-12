@@ -1,6 +1,6 @@
 [Unit]
-Description=pi5-basics interactive LAN terminal
-After=network.target nftables.service
+Description=pi5-basics interactive LAN terminal backend
+After=network.target nginx.service
 Wants=network.target
 
 [Service]
@@ -8,10 +8,7 @@ Type=simple
 User=pi5terminal
 Group=pi5terminal
 WorkingDirectory=/home/pi5terminal
-ExecStartPre=+/usr/local/sbin/pi5-terminal-firewall apply
-ExecStopPost=+/usr/local/sbin/pi5-terminal-firewall remove
-EnvironmentFile=/etc/pi5-basics-terminal.env
-ExecStart=/usr/local/bin/ttyd --port 7681 --ipv6 --credential ${TERMINAL_USER}:${TERMINAL_PASSWORD} --writable --check-origin --max-clients 1 /bin/bash --login
+ExecStart=/usr/local/bin/ttyd --interface 127.0.0.1 --port 7682 --writable --max-clients 1 /bin/bash --login
 Restart=on-failure
 RestartSec=3
 UMask=0077
