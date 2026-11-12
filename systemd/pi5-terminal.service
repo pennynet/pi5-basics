@@ -1,0 +1,41 @@
+[Unit]
+Description=pi5-basics interactive LAN terminal
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi5terminal
+Group=pi5terminal
+WorkingDirectory=/home/pi5terminal
+EnvironmentFile=/etc/pi5-basics-terminal.env
+ExecStart=/usr/bin/ttyd --interface 0.0.0.0 --port 7681 --credential ${TERMINAL_USER}:${TERMINAL_PASSWORD} --writable --check-origin --max-clients 1 /bin/bash --login
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/pi5terminal
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectKernelLogs=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+ProtectProc=invisible
+IPAddressDeny=any
+IPAddressAllow=10.0.0.0/8
+IPAddressAllow=172.16.0.0/12
+IPAddressAllow=192.168.0.0/16
+IPAddressAllow=fc00::/7
+IPAddressAllow=fe80::/10
+
+[Install]
+WantedBy=multi-user.target
