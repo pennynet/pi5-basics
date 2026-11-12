@@ -40,6 +40,7 @@ fi
 
 mkdir -p /var/log
 touch "$LOG_FILE"
+chmod 0600 "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'echo "FEHLER in Zeile $LINENO. Details: $LOG_FILE" >&2' ERR
 
