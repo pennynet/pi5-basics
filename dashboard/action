@@ -13,6 +13,25 @@ case "$ACTION" in
     mv -f /etc/pi5-basics-dashboard.token.new /etc/pi5-basics-dashboard.token
     echo "Dashboard-Passwort wurde geändert."
     ;;
+  ssh-key-list)
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden."; exit 1; }
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    [[ -f "$AUTH" ]] || exit 0
+    ssh-keygen -lf "$AUTH" 2>/dev/null || true
+    ;;
+  ssh-key-add)
+    IFS= read -r KEY || { echo "Kein Schlüssel empfangen."; exit 2; }
+    [[ "$KEY" =~ ^(ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ssh-rsa)[[:space:]]+[A-Za-z0-9+/]+={0,3}([[:space:]].*)?$ ]] || { echo "Ungültiges Schlüsselformat."; exit 2; }
+    printf '%s\n' "$KEY" | ssh-keygen -lf /dev/stdin >/dev/null 2>&1 || { echo "Schlüsselprüfung fehlgeschlagen."; exit 2; }
+    PI_HOME="$(getent passwd pi | cut -d: -f6)"
+    [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden."; exit 1; }
+    install -d -o pi -g pi -m 0700 "$PI_HOME/.ssh"
+    AUTH="$PI_HOME/.ssh/authorized_keys"
+    touch "$AUTH"; chown pi:pi "$AUTH"; chmod 0600 "$AUTH"
+    grep -Fxq -- "$KEY" "$AUTH" || printf '%s\n' "$KEY" >> "$AUTH"
+    echo "Öffentlicher Schlüssel für pi installiert."
+    ;;
   maintenance-status)
     if systemctl is-enabled --quiet pi5-auto-maintenance.timer; then
       echo "Automatische Wartung: aktiviert"
