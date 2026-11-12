@@ -20,7 +20,7 @@ LockPersonality=true
 MemoryDenyWriteExecute=true
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 ReadOnlyPaths=/etc/os-release /proc /sys
-ReadWritePaths=/var/lib/pi5-dashboard
+ReadWritePaths=/var/lib/pi5-dashboard /home/pi/.ssh
 
 [Install]
 WantedBy=multi-user.target
