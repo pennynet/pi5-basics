@@ -117,7 +117,7 @@ button{cursor:pointer;background:#174d76;border-color:#347eb3}button:hover{backg
 input[type=password]{width:100%;margin:10px 0}select{width:100%;margin:8px 0}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#0b1218;padding:14px;border-radius:10px;max-height:420px;overflow:auto}
 form{margin:0}label{display:block;margin:8px 0}.header-actions{display:flex;align-items:center;gap:12px}.password-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end}.password-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.password-fields input{width:100%;margin:6px 0}.password-row button{margin-bottom:6px}@media(max-width:760px){.password-row{grid-template-columns:1fr}.password-row button{justify-self:start}}@media(max-width:600px){.password-fields{grid-template-columns:1fr}}.danger{background:#54302c;border-color:#9b554b}
-details.confirm-pop{position:relative}details.confirm-pop>summary{display:inline-block;list-style:none;cursor:pointer;border-radius:9px;padding:11px 14px;border:1px solid var(--line);background:#174d76;border-color:#347eb3;color:var(--txt);font:inherit;font-weight:500}details.confirm-pop>summary::-webkit-details-marker{display:none}details.confirm-pop>summary.danger{background:#54302c;border-color:#9b554b}details.confirm-pop[open]>summary{visibility:hidden}.confirm-overlay{position:fixed;inset:0;z-index:1000;background:#000b;display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(100%,440px);padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px #0009}.confirm-dialog h2{margin:0 0 10px}.confirm-dialog p{line-height:1.5;margin-bottom:22px}.confirm-dialog form{display:flex;gap:12px;align-items:center;margin-bottom:18px}.confirm-dialog a{display:inline-block;color:var(--muted);text-decoration:none;padding:8px 0}.confirm-dialog a:hover{color:var(--txt)}
+details.confirm-pop{position:relative}details.confirm-pop>summary{display:inline-block;list-style:none;cursor:pointer;border-radius:9px;padding:11px 14px;border:1px solid var(--line);background:#174d76;border-color:#347eb3;color:var(--txt);font:inherit;font-weight:500}details.confirm-pop>summary::-webkit-details-marker{display:none}details.confirm-pop>summary.danger{background:#54302c;border-color:#9b554b}details.confirm-pop[open]>summary{visibility:hidden}.confirm-overlay{position:fixed;inset:0;z-index:1000;background:#000b;display:grid;place-items:center;padding:20px}.confirm-dialog{width:min(100%,440px);padding:24px;background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px #0009}.confirm-dialog h2{margin:0 0 10px}.confirm-dialog p{line-height:1.5;margin-bottom:22px}.confirm-dialog form{display:flex;gap:12px;align-items:center;margin-bottom:18px}.confirm-dialog a{display:inline-block;color:var(--muted);text-decoration:none;padding:8px 0}.confirm-dialog a:hover{color:var(--txt)}.confirm-dialog code{display:block;overflow-wrap:anywhere;word-break:break-all;white-space:normal;font-size:.9rem;line-height:1.5}.fingerprint{padding:10px 12px;margin:0 0 20px;background:#101820;border:1px solid var(--line);border-radius:8px;min-width:0}.confirm-actions{display:flex;flex-wrap:wrap;align-items:center;gap:16px}.confirm-actions form{margin:0}.confirm-actions a{padding:11px 4px}
 a{color:var(--accent)}footer{max-width:1050px;margin:auto;padding:10px 20px 30px;color:var(--muted);font-size:.85rem}
 </style>
 <header><div><h1>🍓 pi5-basics</h1><span class="muted">""" + html.escape(header_label) + """</span></div>""" + header_right + """</header>
@@ -186,13 +186,13 @@ class Handler(BaseHTTPRequestHandler):
                     '<summary class="danger" style="width:190px;text-align:center">Schlüssel löschen</summary>'
                     '<div class="confirm-overlay"><section class="confirm-dialog" role="dialog" aria-modal="true">'
                     '<h2>SSH-Schlüssel löschen?</h2>'
-                    f'<p class="muted">Soll dieser Schlüssel wirklich dauerhaft aus dem SSH-Zugang von pi entfernt werden?</p><p><code>{html.escape(fingerprint)}</code></p>'
-                    '<form method="post" action="/action">'
+                    f'<p class="muted">Soll dieser Schlüssel wirklich dauerhaft aus dem SSH-Zugang von pi entfernt werden?</p><div class="fingerprint"><code>{html.escape(fingerprint)}</code></div>'
+                    '<div class="confirm-actions"><form method="post" action="/action">'
                     f'<input type="hidden" name="csrf" value="{csrf}">'
                     '<input type="hidden" name="action" value="ssh-key-delete">'
                     f'<input type="hidden" name="fingerprint" value="{html.escape(fingerprint, quote=True)}">'
                     '<button class="danger" type="submit">Ja, Schlüssel löschen</button></form>'
-                    '<a href="/">Abbrechen</a></section></div></details></div>'
+                    '<a href="/">Abbrechen</a></div></section></div></details></div>'
                 )
         if not ssh_keys_html:
             ssh_keys_html = '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
