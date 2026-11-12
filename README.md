@@ -162,7 +162,7 @@ pi5-basics/
 ├── LICENSE
 ├── .gitignore
 ├── config/
-│   └── defaults.conf
+│   ├── defaults.conf
 │   └── terminal.env.example
 ├── dashboard/
 │   ├── app.py
