@@ -286,7 +286,7 @@ install_ttyd() {
     return 1
   }
 
-  mapfile -t asset_urls < <(python3 -c '
+  mapfile -t asset_urls < <(printf '%s' "$release_json" | python3 -c '
 import json, sys
 release = json.load(sys.stdin)
 wanted = sys.argv[1].lower()
@@ -298,7 +298,7 @@ checksum_url = next((assets.get(name, "") for name in
                      if assets.get(name, "")), "")
 print(binary_url)
 print(checksum_url)
-' "$asset" <<<"$release_json")
+' "$asset")
   url="${asset_urls[0]:-}"
   checksum_url="${asset_urls[1]:-}"
   [[ "$url" == https://github.com/tsl0922/ttyd/releases/download/* ]] || {
