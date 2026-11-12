@@ -32,10 +32,10 @@ Optional tools selected during setup: btop, tree and iotop.
 - Persistent journal limited to 200 MB; runtime journal limited to 100 MB.
 - Optional unattended package upgrades.
 - Optional radio blocking via rfkill (Wi-Fi and Bluetooth separately configurable).
-- Optional watchdog installation only when requested and a watchdog device exists.
+- Optional watchdog installation only when requested and a watchdog device exists.\n- Optional native Raspberry Pi 5 fan curve for a fan confirmed on the dedicated 4-pin FAN header; presets Normal, Quiet and Cool plus custom thresholds/PWM values. Existing `config.txt` is backed up before the managed section is updated.
 - No blanket removal of services, no disabling of systemd-random-seed, and no disabling of fstrim.
 
-The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. It does not change SSH authentication or firewall policy.
+The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. It does not change SSH authentication or firewall policy.
 
 ### Helper commands
 
@@ -76,7 +76,7 @@ When stdin is not a terminal, the installer uses values from config/defaults.con
 | Enable ZRAM | On | Installs/configures zram-tools |
 | Automatic security updates | On | Enables unattended-upgrades timers |
 | Limit system journal | On | Applies journal size limits above |
-| Hardware watchdog | Off | Installs/enables watchdog only if /dev/watchdog exists |
+| Hardware watchdog | Off | Installs/enables watchdog only if /dev/watchdog exists |\n| Fan connected to Pi 5 FAN header | Off / ask during interactive setup | Configures firmware fan thresholds only after explicit confirmation; offers presets and custom values |
 
 Edit /etc/pi5-basics.conf and rerun sudo bash install.sh to apply changed settings. The installer is designed to be repeatable, but review changes before confirming.
 
