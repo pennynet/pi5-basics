@@ -297,7 +297,7 @@ install_ttyd() {
   }
 
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' RETURN
+  trap 'rm -rf "$tmpdir"' EXIT
   curl --fail --silent --show-error --location "$url" -o "$tmpdir/ttyd"
   curl --fail --silent --show-error --location "$checksum_url" -o "$tmpdir/checksums.txt"
   expected="$(awk -v name="$asset" '$2==name || $2=="*"name {print $1; exit}' "$tmpdir/checksums.txt")"
