@@ -87,9 +87,9 @@ def page(title, body, csrf=""):
 <style>
 :root{color-scheme:dark;--bg:#101820;--panel:#1b2935;--line:#304353;--txt:#edf4f8;--muted:#a9bac7;--accent:#79c0ff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font:16px system-ui,sans-serif}
-header,main{max-width:1050px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+header,main{max-width:1600px;margin:auto;padding:20px}header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);background:#172633}
 h1{font-size:1.3rem;margin:0}h2{font-size:1.1rem;margin-top:0}.muted{color:var(--muted);font-size:.9rem}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.value{font-size:1.35rem}.card{box-shadow:0 3px 12px #0002}.metricbar{height:9px;background:#344958;border-radius:99px;overflow:hidden;margin-top:10px}.metricbar span{display:block;height:100%;background:#48c6d8;border-radius:99px}.metricbar.good span{background:#55d6a0}.metricbar.warn span{background:#e8b75b}.metricbar.bad span{background:#ed766b}.alertbox{border:1px solid #a65c42;background:#422c29;border-radius:12px;padding:14px;margin-bottom:14px;color:#ffd1c6}@media(max-width:760px){header,main{padding:14px}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
 .value{font-size:1.2rem;font-weight:650;overflow-wrap:anywhere}.actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 button,.button,select,input{font:inherit;border-radius:9px;padding:11px 14px;border:1px solid var(--line);background:#263b4c;color:var(--txt)}
@@ -155,7 +155,38 @@ class Handler(BaseHTTPRequestHandler):
         targets = mounted_targets()
         target_options = "".join(f'<option value="{html.escape(p, quote=True)}">{html.escape(p)}</option>' for p in targets)
         backup_form = (f'<form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="backup"><label>Gemountetes Backup-Ziel</label><select name="target" required>{target_options}</select><label><input type="checkbox" name="confirm" value="yes" required> Ich bestätige, dass das ausgewählte Laufwerk mein Backup-Ziel ist.</label><button {"disabled" if not targets else ""}>Backup starten</button></form>' if targets else '<p class="muted">Kein eigenes Laufwerk unter /mnt oder /media eingehängt. Backup ist deshalb deaktiviert.</p>')
+        alerts = []
+        try:
+            tval = float(temp.replace(" °C", ""))
+            if tval >= 75:
+                alerts.append(f"Hohe CPU-Temperatur: {temp}")
+        except ValueError:
+            pass
+        try:
+            meminfo = {}
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                key, value = line.split(":", 1)
+                meminfo[key] = int(value.strip().split()[0])
+            ram_pct = round((meminfo["MemTotal"] - meminfo.get("MemAvailable", 0)) / meminfo["MemTotal"] * 100)
+            if ram_pct >= 90:
+                alerts.append(f"RAM-Auslastung hoch: {ram_pct} %")
+        except Exception:
+            ram_pct = 0
+        try:
+            usage = shutil.disk_usage("/")
+            disk_pct = round(usage.used / usage.total * 100)
+            if disk_pct >= 90:
+                alerts.append(f"Root-Dateisystem fast voll: {disk_pct} %")
+            disk_info = f"{usage.used / 2**30:.1f} / {usage.total / 2**30:.1f} GiB"
+        except Exception:
+            disk_pct, disk_info = 0, "Nicht verfügbar"
+        for unit in ("pi5-dashboard.service", "pi5-terminal.service", "nginx.service"):
+            state = run_readonly(["/usr/bin/systemctl", "is-active", unit], 5).strip()
+            if state != "active":
+                alerts.append(f"{unit}: {state or 'unbekannt'}")
+        alert_html = ('<div class="alertbox"><strong>⚠ Probleme erkannt</strong><ul>' + ''.join('<li>' + html.escape(item) + '</li>' for item in alerts) + '</ul></div>') if alerts else ""
         body = f"""
+{alert_html}
 <div class="grid">
 <div class="card"><div class="muted">Temperatur</div><div class="value">{html.escape(temp)}</div></div>
 <div class="card"><div class="muted">RAM belegt / gesamt</div><div class="value">{html.escape(ram)}</div></div>
@@ -173,6 +204,7 @@ class Handler(BaseHTTPRequestHandler):
 <section class="card"><h2>Systemdetails</h2><p class="muted">Ausgabe der vorhandenen pi-status-Funktion.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="status"><button>Statusdetails anzeigen</button></form></section>
 </div>
 <form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form>"""
+        body += '<script>setTimeout(function(){location.reload()},5000);</script>'
         self.send(200, page("Dashboard", body))
 
     def do_POST(self):
