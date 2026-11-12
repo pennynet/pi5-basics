@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+
+ACTION="${1:-}"
+case "$ACTION" in
+  apply)
+    command -v nft >/dev/null 2>&1 || {
+      echo "nftables fehlt; Terminal-Firewall kann nicht aktiviert werden." >&2
+      exit 1
+    }
+    # This table is exclusively managed by pi5-basics.
+    nft delete table inet pi5_terminal 2>/dev/null || true
+    nft -f - <<'NFT'
+add table inet pi5_terminal
+add chain inet pi5_terminal input { type filter hook input priority -5; policy accept; }
+add rule inet pi5_terminal input tcp dport 7681 ip saddr 127.0.0.0/8 accept
+add rule inet pi5_terminal input tcp dport 7681 ip saddr 169.254.0.0/16 accept
+add rule inet pi5_terminal input tcp dport 7681 ip saddr 10.0.0.0/8 accept
+add rule inet pi5_terminal input tcp dport 7681 ip saddr 172.16.0.0/12 accept
+add rule inet pi5_terminal input tcp dport 7681 ip saddr 192.168.0.0/16 accept
+add rule inet pi5_terminal input tcp dport 7681 ip6 saddr ::1/128 accept
+add rule inet pi5_terminal input tcp dport 7681 ip6 saddr fc00::/7 accept
+add rule inet pi5_terminal input tcp dport 7681 ip6 saddr fe80::/10 accept
+add rule inet pi5_terminal input tcp dport 7681 drop
+NFT
+    ;;
+  remove)
+    nft delete table inet pi5_terminal 2>/dev/null || true
+    ;;
+  *)
+    echo "Usage: pi5-terminal-firewall apply|remove" >&2
+    exit 2
+    ;;
+esac
