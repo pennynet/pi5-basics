@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+echo "=== SSD-Vorbereitung (nur Diagnose, keine Änderungen) ==="
+echo "Erkannte Datenträger:"
+lsblk -e7 -o NAME,PATH,TYPE,SIZE,TRAN,FSTYPE,LABEL,UUID,MOUNTPOINTS,MODEL
+echo
+echo "PCIe/NVMe:"
+if command -v lspci >/dev/null 2>&1; then lspci | grep -Ei 'non-volatile|nvme|pcie' || true; fi
+if compgen -G '/sys/class/nvme/nvme*' >/dev/null; then
+  echo "NVMe-Controller erkannt."
+else
+  echo "Aktuell kein NVMe-Controller sichtbar."
+fi
+echo
+echo "Bootloader-Konfiguration (nur Anzeige):"
+if command -v rpi-eeprom-config >/dev/null 2>&1; then rpi-eeprom-config 2>/dev/null | grep -E '^(BOOT_ORDER|PCIE_PROBE|BOOT_UART)=' || true; else echo "rpi-eeprom-config nicht installiert."; fi
+echo
+echo "Es wurden keine Partitionen formatiert, keine Daten kopiert und keine Bootreihenfolge geändert."
+echo "Wenn die SSD angeschlossen ist, zuerst Modell/Anschlussart und vorhandene Daten sichern."
