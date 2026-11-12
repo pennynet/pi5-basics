@@ -111,7 +111,7 @@ Der Installer installiert `ttyd` und richtet einen eigenen Dienst auf Port 7681 
 - Ein eigener nftables-Input-Chain schützt ausschließlich TCP-Port 7681: erlaubt sind nur die IPv4-/IPv6-Subnetze des jeweiligen Default-Route-Interfaces sowie Loopback; andere Quelladressen werden verworfen. Dadurch bleibt der Zugriff auf das aktive LAN begrenzt. Die ausgehende Netzwerkverbindung der Shell bleibt verfügbar. Die Regel wird beim Start des Terminaldienstes angelegt und beim Stoppen entfernt.
 - Der Dienst läuft mit gehärteten systemd-Einstellungen und ohne Linux-Capabilities.
 
-**Wichtige Transportgrenze:** ttyd verwendet hier HTTP/WebSocket ohne TLS. Basic Authentication verschlüsselt das Passwort nicht. Deshalb ausschließlich in einem vertrauenswürdigen Heimnetz betreiben, niemals Port 7681 oder 8080 ins Internet weiterleiten. Für Fernzugriff VPN verwenden; für verschlüsselten Browserzugriff im LAN beide Dienste hinter einen korrekt konfigurierten HTTPS-Reverse-Proxy stellen.
+**Wichtige Transportgrenze:** ttyd verwendet hier HTTP/WebSocket ohne TLS. Basic Authentication verschlüsselt das Passwort nicht. Deshalb ausschließlich in einem vertrauenswürdigen Heimnetz betreiben, niemals Port 7681 oder 8080 ins Internet weiterleiten. Fernzugriff per VPN ist in dieser LAN-only-Konfiguration nicht freigeschaltet; dafür müsste das VPN-Subnetz ausdrücklich in die Terminal-Allowlist aufgenommen werden. Für verschlüsselten Browserzugriff im LAN beide Dienste hinter einen korrekt konfigurierten HTTPS-Reverse-Proxy stellen.
 
 Dienst prüfen:
 
