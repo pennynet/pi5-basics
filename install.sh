@@ -123,7 +123,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-BASE_PACKAGES=(mc htop ncdu git curl wget nano vim-tiny unzip rsync smartmontools lm-sensors lsof dnsutils usbutils pciutils ethtool jq rfkill)
+BASE_PACKAGES=(mc htop ncdu curl wget nano vim-tiny unzip rsync smartmontools lm-sensors lsof dnsutils usbutils pciutils ethtool jq rfkill)
 OPTIONAL_PACKAGES=(btop tree iotop)
 apt-get install -y "${BASE_PACKAGES[@]}"
 if [[ "$INSTALL_OPTIONAL_TOOLS" == "1" ]]; then apt-get install -y "${OPTIONAL_PACKAGES[@]}"; fi
