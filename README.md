@@ -1,5 +1,7 @@
 # pi5-basics
 
+**Version: 0.9** · Entwicklungsstand / Heimnetz-Installation
+
 **Automated setup and maintenance toolkit for Raspberry Pi 5 running Raspberry Pi OS Trixie.** Interactive configuration, essential system tools, security hardening, Ethernet-focused setup, and preparation for SSD boot with SD-card fallback.
 
 - Hardware: Raspberry Pi 5 (8 GB target)
@@ -7,7 +9,7 @@
 - Language: Bash
 - License: MIT
 
-> **Status:** Initial setup release. The installer configures the base system, installs helper commands, and deploys the authenticated LAN dashboard. SSD detection is currently read-only. It deliberately does not partition, format, clone, or change EEPROM boot order. SSD migration and boot activation are a separate, explicit step once the actual SSD and connection type are known.
+> **Status:** Version 0.9. Der Installer richtet das Basissystem ein, installiert Hilfsprogramme und stellt das authentifizierte LAN-Dashboard einschließlich SSH-Verwaltung und Web-Terminal bereit. Die SSD-Erkennung ist weiterhin ausschließlich lesend. Partitionierung, Formatierung, Klonen und Änderungen an der EEPROM-Bootreihenfolge erfolgen nicht automatisch und bleiben ausdrücklich getrennte Schritte.
 
 ## Goals
 
@@ -36,13 +38,23 @@ Optional tools selected during setup: btop, tree and iotop.
 - Optional native Raspberry Pi 5 fan curve for a fan confirmed on the dedicated 4-pin FAN header; presets Normal, Quiet and Cool plus custom thresholds/PWM values. Existing `config.txt` is backed up before the managed section is updated.
 - No blanket removal of services, no disabling of systemd-random-seed, and no disabling of fstrim.
 
-The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. It does not change SSH authentication. For the terminal only, it adds a separate nftables input chain for TCP port 7681; other ports and existing firewall chains are left untouched.
+The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. SSH authentication is not changed automatically during installation. The dashboard can, however, manage public SSH keys for the Linux user `pi` and enable or disable SSH password authentication explicitly. Disabling password authentication is blocked unless at least one valid public key is installed. For the terminal only, the installer adds a separate nftables input chain for TCP port 7681; other ports and existing firewall chains are left untouched.
 
 ### Web dashboard
 
 The installer also deploys an authenticated dashboard at `http://raspberrypi.local:8080` (or `http://<pi-address>:8080`). It provides live-on-refresh system cards, detailed status, backup, maintenance, read-only SSD preparation and an embedded interactive Linux terminal. Backup and maintenance require an explicit confirmation. Backup targets are restricted to mounted filesystems found under `/mnt` or `/media`.
 
-The dashboard service runs as an unprivileged `pi5dashboard` user; a narrowly scoped root helper performs privileged maintenance, backup and password-file updates. Weekly automated maintenance is enabled by default through a systemd timer (Sunday 04:00, persistent across downtime), can be enabled or disabled in the dashboard, writes to `/var/log/pi5-basics-maintenance.log`, and does not reboot automatically. The installer installs `ttyd` from the official upstream GitHub release (architecture-specific arm64, armhf or amd64 binary) and verifies its SHA-256 checksum. A dedicated unprivileged `pi5terminal` user runs the Bash shell through ttyd on loopback port 7682. Nginx exposes port 7681 with separate HTTP Basic Authentication and WebSocket proxying; the password hash is stored in `/etc/nginx/pi5-terminal.htpasswd`, while the original credential is retained root-only in `/etc/pi5-basics-terminal.env`. One connected browser client is allowed. A dedicated nftables input chain accepts connections to port 7681 only from the subnet(s) assigned to the default-route interface (IPv4 and IPv6). Outbound network access from the shell remains available. The `pi5terminal` account is a member of the `sudo` group and has an explicit passwordless full-sudo rule, including the ability to open a root shell. The terminal systemd service intentionally does not apply a filesystem or privilege-escalation sandbox, so root commands can administer the host. This is intentional for complete system administration through the terminal; anyone who obtains the terminal credentials or compromises that browser session can take over the Pi. Keep access restricted to a trusted LAN, use a unique strong terminal password, and never expose port 7681 to the internet. The terminal password is generated once and stored in `/etc/pi5-basics-terminal.env` (root-only, mode 0600); the installer prints it at setup. To retrieve it later, use `sudo cat /etc/pi5-basics-terminal.env`. The initial random dashboard password is stored in `/etc/pi5-basics-dashboard.token`; it can be changed in the authenticated dashboard under “Dashboard-Passwort ändern”. The dashboard accepts connections only from private/local IP ranges. **Use it only on a trusted home network; do not forward port 8080 from the internet. HTTP and the Basic Authentication exchange are not encrypted on the LAN**, so use only a trusted home network. Do not forward ports 8080 or 7681 from the internet. Remote VPN access is not enabled in this LAN-only configuration; it would require explicitly adding the VPN subnet to the terminal allowlist. For encrypted browser access on the LAN, put both services behind a correctly configured HTTPS reverse proxy.
+The dashboard service runs as an unprivileged `pi5dashboard` user; a narrowly scoped root helper performs approved privileged actions, including maintenance, backup, dashboard password changes, SSH public-key management, SSH password-authentication changes, shutdown and reboot. Weekly automated maintenance is enabled by default through a systemd timer (Sunday 04:00, persistent across downtime), can be enabled or disabled in the dashboard, writes to `/var/log/pi5-basics-maintenance.log`, and does not reboot automatically. The installer installs `ttyd` from the official upstream GitHub release (architecture-specific arm64, armhf or amd64 binary) and verifies its SHA-256 checksum. A dedicated unprivileged `pi5terminal` user runs the Bash shell through ttyd on loopback port 7682. Nginx exposes port 7681 with separate HTTP Basic Authentication and WebSocket proxying; the password hash is stored in `/etc/nginx/pi5-terminal.htpasswd`, while the original credential is retained root-only in `/etc/pi5-basics-terminal.env`. One connected browser client is allowed. A dedicated nftables input chain accepts connections to port 7681 only from the subnet(s) assigned to the default-route interface (IPv4 and IPv6). Outbound network access from the shell remains available. The `pi5terminal` account is a member of the `sudo` group and has an explicit passwordless full-sudo rule, including the ability to open a root shell. The terminal systemd service intentionally does not apply a filesystem or privilege-escalation sandbox, so root commands can administer the host. This is intentional for complete system administration through the terminal; anyone who obtains the terminal credentials or compromises that browser session can take over the Pi. Keep access restricted to a trusted LAN, use a unique strong terminal password, and never expose port 7681 to the internet. The terminal password is generated once and stored in `/etc/pi5-basics-terminal.env` (root-only, mode 0600); the installer prints it at setup. To retrieve it later, use `sudo cat /etc/pi5-basics-terminal.env`. The initial random dashboard password is stored in `/etc/pi5-basics-dashboard.token`; it can be changed in the authenticated dashboard under “Dashboard-Passwort ändern”. The dashboard accepts connections only from private/local IP ranges. **Use it only on a trusted home network; do not forward port 8080 from the internet. HTTP and the Basic Authentication exchange are not encrypted on the LAN**, so use only a trusted home network. Do not forward ports 8080 or 7681 from the internet. Remote VPN access is not enabled in this LAN-only configuration; it would require explicitly adding the VPN subnet to the terminal allowlist. For encrypted browser access on the LAN, put both services behind a correctly configured HTTPS reverse proxy.
+
+### SSH-Verwaltung
+
+Im Dashboard können öffentliche SSH-Schlüssel für den Benutzer `pi` hinzugefügt und anhand ihres SHA256-Fingerabdrucks einzeln gelöscht werden. Der private Schlüssel verbleibt auf dem eigenen Rechner und darf niemals auf den Pi oder in dieses Git-Repository kopiert werden. Die Passwortanmeldung für SSH lässt sich im Dashboard ein- und ausschalten. Zum Schutz vor Aussperren verweigert das Dashboard das Abschalten der Passwortanmeldung, solange kein gültiger SSH-Schlüssel installiert ist. Ebenso kann der letzte Schlüssel nicht gelöscht werden, solange die Passwortanmeldung deaktiviert ist.
+
+Die SSH-Einstellungen werden nicht automatisch bei der Installation verschärft. Die Änderung erfolgt bewusst und explizit über die Dashboard-Oberfläche.
+
+### Herunterfahren und Neustarten
+
+Das Dashboard bietet Funktionen zum kontrollierten Herunterfahren und Neustarten des Raspberry Pi. Beide Aktionen erfordern eine Bestätigung.
 
 ### Helper commands
 
@@ -143,7 +155,8 @@ sudo pi-ssd-prepare
 - No automatic SSD cloning.
 - No automatic EEPROM or boot-order modification.
 - No removal of packages/services based on broad assumptions.
-- No changes to SSH keys or SSH policy; only a dedicated nftables input chain for terminal TCP port 7681 is added.
+- SSH keys and SSH password-authentication policy can be managed explicitly in the dashboard; the installer does not change them automatically.
+- The web dashboard (port 8080) and web terminal (port 7681) are intended for a trusted local network only. Never expose these ports directly to the internet.
 - Configuration is stored in /etc/pi5-basics.conf.
 - Installer logs actions to /var/log/pi5-basics-install.log.
 
@@ -182,6 +195,20 @@ pi5-basics/
     ├── boot-recovery.md
     └── troubleshooting.md
 ~~~
+
+## Version 0.9 – Stand
+
+Version 0.9 umfasst insbesondere:
+
+- Installer für Raspberry Pi OS Trixie auf dem Raspberry Pi 5.
+- Authentifiziertes LAN-Dashboard mit Systemübersicht und Passwortänderung.
+- Bestätigungsdialoge für Wartung, Backup, Herunterfahren und Neustart.
+- Verwaltung öffentlicher SSH-Schlüssel für den Benutzer `pi` (anzeigen, hinzufügen und einzeln löschen).
+- Explizites Aktivieren und Deaktivieren der SSH-Passwortanmeldung mit Schutz vor Aussperren.
+- Integriertes Web-Terminal mit separater HTTP-Basic-Authentifizierung und LAN-Firewall-Regeln.
+- Systemd-Dienste und wöchentliche optionale/steuerbare automatische Wartung.
+
+Der Versionsstand bezeichnet den Quellcode in GitHub auf dem Branch `main`. Eine Neuinstallation erhält diesen Programmstand durch erneutes Klonen des Repositorys. Individuelle Zugangsdaten, SSH-Private-Keys und lokale Einstellungen werden aus Sicherheitsgründen nicht in GitHub gespeichert und müssen nach einer Neuinstallation neu eingerichtet bzw. aus einem eigenen Backup wiederhergestellt werden.
 
 ## Contributing
 
