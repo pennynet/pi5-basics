@@ -6,6 +6,14 @@ DEFAULTS_FILE="$PROJECT_DIR/config/defaults.conf"
 CONFIG_FILE="/etc/pi5-basics.conf"
 LOG_FILE="/var/log/pi5-basics-install.log"
 
+NON_INTERACTIVE=0
+for arg in "$@"; do
+  case "$arg" in
+    --non-interactive|--defaults) NON_INTERACTIVE=1 ;;
+    *) echo "Unbekannte Option: $arg" >&2; exit 2 ;;
+  esac
+done
+
 if [[ $EUID -ne 0 ]]; then
   echo "Bitte mit sudo starten: sudo bash install.sh" >&2
   exit 1
@@ -22,8 +30,12 @@ fi
 MODEL="$(tr -d '\0' </proc/device-tree/model 2>/dev/null || true)"
 if [[ "$MODEL" != *"Raspberry Pi 5"* ]]; then
   echo "Warnung: Raspberry Pi 5 nicht eindeutig erkannt (${MODEL:-unbekannt})."
-  read -r -p "Trotzdem fortfahren? [j/N] " answer
-  [[ "$answer" =~ ^[JjYy]$ ]] || exit 1
+  if [[ "$NON_INTERACTIVE" == "1" ]]; then
+    echo "Nicht-interaktiver Modus: fahre aufgrund der expliziten Option fort."
+  else
+    read -r -p "Trotzdem fortfahren? [j/N] " answer
+    [[ "$answer" =~ ^[JjYy]$ ]] || exit 1
+  fi
 fi
 
 mkdir -p /var/log
@@ -32,6 +44,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 trap 'echo "FEHLER in Zeile $LINENO. Details: $LOG_FILE" >&2' ERR
 
 echo "=== pi5-basics Installer ==="
+if [[ "$NON_INTERACTIVE" == "1" ]]; then echo "Modus: nicht-interaktiv (Konfiguration aus $CONFIG_FILE bzw. Defaults)"; fi
 echo "System: ${PRETTY_NAME:-unbekannt}"
 echo "Modell: ${MODEL:-unbekannt}"
 echo "Die Bootreihenfolge wird NICHT geändert. SSD-Vorbereitung erfolgt separat."
@@ -57,7 +70,7 @@ ask() {
 }
 echo
 echo "Interaktive Konfiguration (Enter/Nein übernimmt den sicheren Standard Nein)."
-if [[ -t 0 ]]; then
+if [[ -t 0 && "$NON_INTERACTIVE" != "1" ]]; then
   INSTALL_OPTIONAL_TOOLS="$(ask "Zusätzliche Diagnosewerkzeuge installieren?" "$INSTALL_OPTIONAL_TOOLS")"
   DISABLE_WIFI="$(ask "WLAN per rfkill deaktivieren?" "$DISABLE_WIFI")"
   DISABLE_BLUETOOTH="$(ask "Bluetooth per rfkill deaktivieren?" "$DISABLE_BLUETOOTH")"
@@ -116,7 +129,7 @@ chmod 0644 "$CONFIG_FILE"
 echo
 echo "Geplante Einstellungen:"
 cat "$CONFIG_FILE"
-if [[ -t 0 ]]; then
+if [[ -t 0 && "$NON_INTERACTIVE" != "1" ]]; then
   read -r -p "Installation jetzt durchführen? [j/N] " confirm
   [[ "$confirm" =~ ^[JjYy]$ ]] || { echo "Abgebrochen; Konfiguration gespeichert."; exit 0; }
 fi
