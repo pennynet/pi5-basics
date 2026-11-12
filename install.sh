@@ -254,10 +254,68 @@ fi
 
 
 # Install the authenticated, LAN-only dashboard as an unprivileged service.
-apt-get install -y python3 sudo ttyd nftables iproute2
+apt-get install -y python3 sudo nftables iproute2 curl ca-certificates
 if ! id pi5dashboard >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
 fi
+
+# Debian Trixie on Raspberry Pi OS may not publish ttyd in the configured APT suites.
+# Install the upstream prebuilt release asset, verify it against the release checksum,
+# and pin the deployed version/path locally for repeatable installer runs.
+install_ttyd() {
+  local arch asset release_api release_json tag url checksum_url tmpdir expected actual
+  arch="$(dpkg --print-architecture)"
+  case "$arch" in
+    arm64) asset="ttyd.aarch64" ;;
+    armhf) asset="ttyd.armhf" ;;
+    amd64) asset="ttyd.x86_64" ;;
+    *) echo "ttyd: nicht unterstützte Architektur: $arch" >&2; return 1 ;;
+  esac
+
+  if [[ -x /usr/local/bin/ttyd ]]; then
+    echo "ttyd ist bereits installiert: $(/usr/local/bin/ttyd --version 2>&1 | head -n1)"
+    return 0
+  fi
+
+  release_api="https://api.github.com/repos/tsl0922/ttyd/releases/latest"
+  release_json="$(curl --fail --silent --show-error --location "$release_api")"
+  tag="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])' <<<"$release_json")"
+  [[ "$tag" =~ ^[vV]?[0-9]+(\\.[0-9]+){1,2}$ ]] || {
+    echo "ttyd: unerwartetes Release-Tag-Format: $tag" >&2
+    return 1
+  }
+
+  url="$(ASSET="$asset" python3 -c 'import json,os,sys; d=json.load(sys.stdin); n=os.environ["ASSET"]; print(next((a["browser_download_url"] for a in d["assets"] if a["name"]==n), ""))' <<<"$release_json")"
+  checksum_url="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((a["browser_download_url"] for a in d["assets"] if a["name"] in ("sha256sum.txt","sha256sums.txt","checksums.txt")), ""))' <<<"$release_json")"
+  [[ "$url" == https://github.com/tsl0922/ttyd/releases/download/* ]] || {
+    echo "ttyd: passendes offizielles Release-Asset '$asset' nicht gefunden." >&2
+    return 1
+  }
+  [[ "$checksum_url" == https://github.com/tsl0922/ttyd/releases/download/* ]] || {
+    echo "ttyd: Release enthält keine veröffentlichte SHA-256-Prüfsummendatei; Installation wird abgebrochen." >&2
+    return 1
+  }
+
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' RETURN
+  curl --fail --silent --show-error --location "$url" -o "$tmpdir/ttyd"
+  curl --fail --silent --show-error --location "$checksum_url" -o "$tmpdir/checksums.txt"
+  expected="$(awk -v name="$asset" '$2==name || $2=="*"name {print $1; exit}' "$tmpdir/checksums.txt")"
+  [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || {
+    echo "ttyd: SHA-256 für $asset fehlt in der Prüfsummendatei." >&2
+    return 1
+  }
+  actual="$(sha256sum "$tmpdir/ttyd" | awk '{print $1}')"
+  [[ "$actual" == "$expected" ]] || {
+    echo "ttyd: SHA-256-Prüfung fehlgeschlagen." >&2
+    return 1
+  }
+  install -o root -g root -m 0755 "$tmpdir/ttyd" /usr/local/bin/ttyd
+  /usr/local/bin/ttyd --version
+  echo "ttyd $tag installiert (SHA-256 geprüft)."
+}
+
+install_ttyd
 
 # Dedicated unprivileged account and authenticated terminal service.
 if ! id pi5terminal >/dev/null 2>&1; then
