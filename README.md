@@ -22,7 +22,7 @@
 
 ### Included packages
 
-Midnight Commander (mc) is installed by default, plus htop, ncdu, git, curl, wget, nano, vim-tiny, unzip, rsync, smartmontools, lm-sensors, lsof, dnsutils, usbutils, pciutils, ethtool, jq and rfkill.
+Midnight Commander (mc) is installed by default, plus htop, ncdu, curl, wget, nano, vim-tiny, unzip, rsync, smartmontools, lm-sensors, lsof, dnsutils, usbutils, pciutils, ethtool, jq and rfkill. Git is a prerequisite for cloning the repository and is installed before the project is downloaded; the installer therefore does not install it again.
 
 Optional tools selected during setup: btop, tree and iotop.
 
