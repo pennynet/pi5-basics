@@ -353,6 +353,8 @@ install_ttyd
 if ! id pi5terminal >/dev/null 2>&1; then
   useradd --system --home-dir /home/pi5terminal --create-home --shell /bin/bash --user-group pi5terminal
 fi
+# Explicitly requested full administrative access for the authenticated LAN terminal.
+usermod -aG sudo pi5terminal
 install -d -o pi5terminal -g pi5terminal -m 0700 /home/pi5terminal
 if [[ ! -s /etc/pi5-basics-terminal.env ]]; then
   TERMINAL_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
