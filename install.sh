@@ -355,6 +355,9 @@ if ! id pi5terminal >/dev/null 2>&1; then
 fi
 # Explicitly requested full administrative access for the authenticated LAN terminal.
 usermod -aG sudo pi5terminal
+printf '%s\n' 'pi5terminal ALL=(ALL:ALL) NOPASSWD: ALL' >/etc/sudoers.d/pi5terminal
+chmod 0440 /etc/sudoers.d/pi5terminal
+visudo -cf /etc/sudoers.d/pi5terminal
 install -d -o pi5terminal -g pi5terminal -m 0700 /home/pi5terminal
 if [[ ! -s /etc/pi5-basics-terminal.env ]]; then
   TERMINAL_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
@@ -428,6 +431,6 @@ cat /etc/pi5-basics-dashboard.token
 echo "Terminal: http://raspberrypi.local:7681 (ein gleichzeitiger Client)"
 echo "Terminal-Anmeldedaten: Benutzer pi5terminal; Passwort:"
 sed -n 's/^TERMINAL_PASSWORD=//p' /etc/pi5-basics-terminal.env
-echo "Das Terminal läuft als unprivilegierter Benutzer ohne sudo-Rechte."
+echo "Das Terminalkonto pi5terminal besitzt vollständige sudo-Rechte (NOPASSWD). Zugangsdaten streng vertraulich behandeln."
 echo "Protokoll: $LOG_FILE"
 echo "Hinweis: Die Bootreihenfolge wurde nicht verändert."
