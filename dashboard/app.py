@@ -225,7 +225,7 @@ class Handler(BaseHTTPRequestHandler):
 
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
-        header_right = f'<div class="header-actions"><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="shutdown"><button class="danger" type="submit" onclick="return confirm(&quot;Soll der Raspberry Pi wirklich heruntergefahren werden?&quot;)">Shutdown</button></form><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="reboot"><button type="submit" onclick="return confirm(&quot;Soll der Raspberry Pi wirklich neu gestartet werden?&quot;)">Reboot</button></form><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
+        header_right = f'<div class="header-actions"><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="shutdown"><label><input type="checkbox" name="confirm" value="yes" required> Herunterfahren bestätigen</label><button class="danger" type="submit">Shutdown</button></form><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="reboot"><label><input type="checkbox" name="confirm" value="yes" required> Neustart bestätigen</label><button type="submit">Reboot</button></form><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
         header_info = f"{model} · {os_name} · IPv4: {network.replace(chr(10), ' | ')} · Laufzeit: {uptime}"
         self.send(200, page("Dashboard", body, header_right=header_right, header_label=header_info))
 
@@ -284,7 +284,7 @@ class Handler(BaseHTTPRequestHandler):
         action = form.get("action", [""])[0]
         if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
-        if action in ("maintenance", "backup") and form.get("confirm", [""])[0] != "yes":
+        if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
         if action in ("shutdown", "reboot"):
             output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=10)
