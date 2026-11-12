@@ -389,6 +389,8 @@ install -o root -g root -m 0755 "$PROJECT_DIR/dashboard/action" /usr/local/sbin/
 install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-dashboard.service" /etc/systemd/system/pi5-dashboard.service
 install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-terminal.service" /etc/systemd/system/pi5-terminal.service
 install -o root -g root -m 0755 "$PROJECT_DIR/systemd/pi5-terminal-firewall" /usr/local/sbin/pi5-terminal-firewall
+install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-auto-maintenance.service" /etc/systemd/system/pi5-auto-maintenance.service
+install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-auto-maintenance.timer" /etc/systemd/system/pi5-auto-maintenance.timer
 if [[ ! -s /etc/pi5-basics-dashboard.token ]]; then
   DASHBOARD_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
   printf '%s\n' "$DASHBOARD_TOKEN" >/etc/pi5-basics-dashboard.token
@@ -406,6 +408,8 @@ install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
 systemctl daemon-reload
 systemctl enable pi5-dashboard.service pi5-terminal.service nginx.service
+# Weekly system maintenance is enabled by default; it can be paused from the dashboard.
+systemctl enable --now pi5-auto-maintenance.timer
 # Release the old ttyd listener on 7681 before nginx takes over that port.
 systemctl stop pi5-terminal.service || true
 # Nginx owns the LAN firewall rule and exposes only its authenticated proxy.
