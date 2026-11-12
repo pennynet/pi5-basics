@@ -60,7 +60,7 @@ def network_data():
     if output and not output.startswith("Fehler:") and output.strip():
         lines = [line for line in output.splitlines() if not line.lstrip().startswith("lo ")]
         if lines:
-            return "\\n".join(lines)
+            return "\n".join(lines)
     fallback = run_readonly(["hostname", "-I"], 5).strip()
     if fallback and not fallback.startswith("Fehler:"):
         return "IP-Adresse(n): " + fallback
