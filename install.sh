@@ -408,7 +408,6 @@ systemctl restart nginx.service
 # Restart so updated application and unit files are active on repeat installs.
 systemctl restart pi5-terminal.service
 systemctl restart pi5-dashboard.service
-systemctl restart pi5-terminal.service
 
 if [[ "$ENABLE_WATCHDOG" == "1" && -e /dev/watchdog ]]; then
   apt-get install -y watchdog
