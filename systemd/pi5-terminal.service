@@ -1,6 +1,6 @@
 [Unit]
 Description=pi5-basics interactive LAN terminal
-After=network.target
+After=network.target nftables.service
 Wants=network.target
 
 [Service]
