@@ -168,7 +168,8 @@ pi5-basics/
 │   └── action
 ├── systemd/
 │   ├── pi5-dashboard.service
-│   ├── pi5-terminal.service\n│   └── pi5-terminal-firewall
+│   ├── pi5-terminal.service
+│   └── pi5-terminal-firewall
 ├── commands/
 │   ├── pi-status
 │   ├── pi-maintenance
