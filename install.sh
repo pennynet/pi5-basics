@@ -147,7 +147,16 @@ if [[ "$ENABLE_AUTO_UPDATES" == "1" ]]; then apt-get install -y unattended-upgra
 if [[ "$ENABLE_ZRAM" == "1" && -f /etc/default/zramswap ]]; then
   cp -a /etc/default/zramswap "/etc/default/zramswap.pi5-basics.bak"
   sed -i -E 's/^#?PERCENT=.*/PERCENT=25/; s/^#?ALGO=.*/ALGO=zstd/' /etc/default/zramswap
-  systemctl enable --now zramswap.service || systemctl restart zramswap.service || true
+  if swapon --noheadings --raw --output NAME | grep -Fxq /dev/zram0; then
+    # The existing zram device is already configured and active. Restarting
+    # zramswap here would try to reset a busy device and fail with EBUSY.
+    systemctl enable zramswap.service
+    systemctl reset-failed zramswap.service || true
+    echo "ZRAM ist bereits aktiv; vorhandenes /dev/zram0 bleibt unverändert."
+  else
+    systemctl enable zramswap.service
+    systemctl start zramswap.service || echo "WARNUNG: zramswap konnte nicht gestartet werden; siehe journalctl -u zramswap.service."
+  fi
 fi
 
 if [[ "$LIMIT_JOURNAL" == "1" ]]; then
