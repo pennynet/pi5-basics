@@ -1,0 +1,11 @@
+[Unit]
+Description=pi5-basics weekly system maintenance
+Wants=network-online.target
+After=network-online.target
+Conflicts=apt-daily.service apt-daily-upgrade.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pi5-dashboard-action maintenance
+StandardOutput=append:/var/log/pi5-basics-maintenance.log
+StandardError=append:/var/log/pi5-basics-maintenance.log
