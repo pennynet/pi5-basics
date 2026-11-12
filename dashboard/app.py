@@ -226,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
 
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
-        header_right = f'<div class="header-actions"><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
+        header_right = f'<div class="header-actions"><form method="post" action="/action" onsubmit="return confirm(\'Raspberry Pi jetzt vollständig herunterfahren?\')"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="shutdown"><button class="danger">Shutdown</button></form><form method="post" action="/action" onsubmit="return confirm(\'Raspberry Pi jetzt neu starten?\')"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="reboot"><button>Reboot</button></form><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
         header_info = f"{model} · {os_name} · IPv4: {network.replace(chr(10), ' | ')}"
         self.send(200, page("Dashboard", body, header_right=header_right, header_label=header_info))
 
@@ -283,11 +283,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
-        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable"):
+        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
         if action in ("maintenance", "backup") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
-        if action in ("maintenance-enable", "maintenance-disable"):
+        if action in ("shutdown", "reboot"):
+            output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=10)
+        elif action in ("maintenance-enable", "maintenance-disable"):
             output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=30)
         elif action == "status":
             output = run_readonly(["/usr/local/bin/pi-status"])
