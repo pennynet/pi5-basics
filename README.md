@@ -36,7 +36,7 @@ Optional tools selected during setup: btop, tree and iotop.
 - Optional native Raspberry Pi 5 fan curve for a fan confirmed on the dedicated 4-pin FAN header; presets Normal, Quiet and Cool plus custom thresholds/PWM values. Existing `config.txt` is backed up before the managed section is updated.
 - No blanket removal of services, no disabling of systemd-random-seed, and no disabling of fstrim.
 
-The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. It does not change SSH authentication or firewall policy.
+The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other services indiscriminately. Fan control uses the Pi 5 firmware; it does not install a polling daemon. The fan question defaults to No. If no fan is confirmed, fan settings are left alone. It does not change SSH authentication. For the terminal only, it adds a separate nftables input chain for TCP port 7681; other ports and existing firewall chains are left untouched.
 
 ### Web dashboard
 
@@ -143,7 +143,7 @@ sudo pi-ssd-prepare
 - No automatic SSD cloning.
 - No automatic EEPROM or boot-order modification.
 - No removal of packages/services based on broad assumptions.
-- No changes to passwords, SSH keys, SSH policy, or firewall rules.
+- No changes to SSH keys or SSH policy; only a dedicated nftables input chain for terminal TCP port 7681 is added.
 - Configuration is stored in /etc/pi5-basics.conf.
 - Installer logs actions to /var/log/pi5-basics-install.log.
 
