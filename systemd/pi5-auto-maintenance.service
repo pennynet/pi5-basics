@@ -1,8 +1,7 @@
 [Unit]
 Description=pi5-basics weekly system maintenance
 Wants=network-online.target
-After=network-online.target
-Conflicts=apt-daily.service apt-daily-upgrade.service
+After=network-online.target apt-daily.service apt-daily-upgrade.service
 
 [Service]
 Type=oneshot
