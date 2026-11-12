@@ -320,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
             enabled = "yes" in form.get("enabled", [])
             result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-auth", "enable" if enabled else "disable"],
                                     text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20, check=False)
-            output = result.stdout.strip() or ("Einstellung gespeichert." if result.returncode == 0 else "Änderung fehlgeschlagen.")
+            output = result.stdout.strip() or ("Einstellung gespeichert." if result.returncode == 0 else "Änderung fehlgeschlagen. Es muss mindestens ein Schlüssel installiert sein!")
         elif action == "ssh-key-delete":
             fingerprint = form.get("fingerprint", [""])[0]
             if not re.fullmatch(r"SHA256:[A-Za-z0-9+/]+={0,2}", fingerprint):
