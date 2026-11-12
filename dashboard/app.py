@@ -145,28 +145,6 @@ class Handler(BaseHTTPRequestHandler):
             body = '<section class="card" style="max-width:420px;margin:50px auto"><h2>Anmeldung</h2><p class="muted">Das Dashboard-Passwort steht in der Installationsausgabe.</p><form method="post" action="/login"><input type="password" name="password" placeholder="Dashboard-Passwort" required autofocus><button>Anmelden</button></form></section>'
             return self.send(200, page("Anmeldung", body))
         csrf = sess["csrf"]
-        if self.path == "/password":
-            new_password = form.get("new_password", [""])[0]
-            confirm_password = form.get("confirm_password", [""])[0]
-            if len(new_password) < 12 or len(new_password) > 256 or "\\n" in new_password or "\\r" in new_password:
-                return self.send(400, page("Passwort ändern", '<p>Das Passwort muss 12 bis 256 Zeichen lang sein und darf keinen Zeilenumbruch enthalten.</p><a href="/">Zurück</a>'))
-            if not secrets.compare_digest(new_password, confirm_password):
-                return self.send(400, page("Passwort ändern", '<p>Die Passwörter stimmen nicht überein.</p><a href="/">Zurück</a>'))
-            try:
-                result = subprocess.run(
-                    ["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "set-password"],
-                    input=new_password + "\\n", text=True, stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT, timeout=15, check=False
-                )
-            except Exception as exc:
-                return self.send(500, page("Passwort ändern", f'<p>Passwortänderung fehlgeschlagen: {html.escape(str(exc))}</p><a href="/">Zurück</a>'))
-            if result.returncode != 0:
-                return self.send(500, page("Passwort ändern", f'<p>{html.escape(result.stdout.strip() or "Passwortänderung fehlgeschlagen.")}</p><a href="/">Zurück</a>'))
-            global DASHBOARD_PASSWORD
-            DASHBOARD_PASSWORD = new_password
-            SESSIONS.clear()
-            return self.send(200, page("Passwort geändert", '<p>Das Dashboard-Passwort wurde geändert. Bitte melde dich jetzt mit dem neuen Passwort an.</p><a href="/">Zur Anmeldung</a>'),
-                             "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         if self.path == "/logout":
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
@@ -211,6 +189,28 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(401, page("Anmeldung", '<p>Bitte erneut anmelden. <a href="/">Anmelden</a></p>'))
         if not secrets.compare_digest(form.get("csrf", [""])[0], sess["csrf"]):
             return self.send(403, page("Fehler", "<p>Ungültige Anfrage (CSRF-Prüfung).</p>"))
+        if self.path == "/password":
+            new_password = form.get("new_password", [""])[0]
+            confirm_password = form.get("confirm_password", [""])[0]
+            if len(new_password) < 12 or len(new_password) > 256 or "\n" in new_password or "\r" in new_password:
+                return self.send(400, page("Passwort ändern", '<p>Das Passwort muss 12 bis 256 Zeichen lang sein und darf keinen Zeilenumbruch enthalten.</p><a href="/">Zurück</a>'))
+            if not secrets.compare_digest(new_password, confirm_password):
+                return self.send(400, page("Passwort ändern", '<p>Die Passwörter stimmen nicht überein.</p><a href="/">Zurück</a>'))
+            try:
+                result = subprocess.run(
+                    ["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "set-password"],
+                    input=new_password + "\n", text=True, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, timeout=15, check=False
+                )
+            except Exception as exc:
+                return self.send(500, page("Passwort ändern", f"<p>Passwortänderung fehlgeschlagen: {html.escape(str(exc))}</p><a href='/'>Zurück</a>"))
+            if result.returncode != 0:
+                return self.send(500, page("Passwort ändern", f"<p>{html.escape(result.stdout.strip() or 'Passwortänderung fehlgeschlagen.')}</p><a href='/'>Zurück</a>"))
+            global DASHBOARD_PASSWORD
+            DASHBOARD_PASSWORD = new_password
+            SESSIONS.clear()
+            return self.send(200, page("Passwort geändert", '<p>Das Dashboard-Passwort wurde geändert. Bitte melde dich jetzt mit dem neuen Passwort an.</p><a href="/">Zur Anmeldung</a>'),
+                             "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         if self.path == "/logout":
             cookie = http.cookies.SimpleCookie(self.headers.get("Cookie", ""))
             sid = cookie.get("pi5session")
