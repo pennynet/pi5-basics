@@ -40,7 +40,7 @@ The installer does not disable Ethernet, NetworkManager, SSH, Avahi, or other se
 
 ### Web dashboard
 
-The installer also deploys an authenticated dashboard at `http://raspberrypi.local:8080` (or `http://<pi-address>:8080`). It provides live-on-refresh system cards, detailed status, backup, maintenance and read-only SSD preparation. Backup and maintenance require an explicit confirmation. Backup targets are restricted to mounted filesystems directly below `/mnt` or `/media`.
+The installer also deploys an authenticated dashboard at `http://raspberrypi.local:8080` (or `http://<pi-address>:8080`). It provides live-on-refresh system cards, detailed status, backup, maintenance and read-only SSD preparation. Backup and maintenance require an explicit confirmation. Backup targets are restricted to mounted filesystems found under `/mnt` or `/media`.
 
 The service runs as an unprivileged `pi5dashboard` user; a narrowly scoped root helper performs the two privileged actions. The random dashboard password is stored in `/etc/pi5-basics-dashboard.token`; display it with `sudo cat /etc/pi5-basics-dashboard.token`. The dashboard accepts connections only from private/local IP ranges. **Use it only on a trusted home network; do not forward port 8080 from the internet. HTTP is not encrypted**, so for access beyond a trusted LAN use a VPN such as Tailscale or add a properly configured HTTPS reverse proxy.
 
