@@ -19,6 +19,14 @@ cd pi5-basics
 sudo bash install.sh
 ~~~
 
+Alle Rückfragen und die abschließende Bestätigung lassen sich überspringen:
+
+~~~bash
+sudo bash install.sh --non-interactive
+~~~
+
+Dabei werden die vorhandenen Einstellungen aus `/etc/pi5-basics.conf` verwendet. Bei der ersten Installation gelten die Werte aus `config/defaults.conf`.
+
 Der Installer bricht bei einer nicht unterstützten Debian-/Raspberry-Pi-OS-Version ab. Bei nicht eindeutig erkanntem Pi-5-Modell fragt er vor dem Fortfahren nach.
 
 ## Interaktive Einrichtung
@@ -77,11 +85,7 @@ Ein 3-Pin-Lüfter oder ein Lüfter an GPIO/USB wird von dieser Abfrage nicht als
 
 Der Installer richtet einen Webdienst auf Port 8080 ein. Im Heimnetz ist er üblicherweise unter `http://raspberrypi.local:8080` oder über die IP-Adresse des Pi erreichbar.
 
-Das zufällig erzeugte Kennwort steht in:
-
-~~~bash
-sudo cat /etc/pi5-basics-dashboard.token
-~~~
+Das zufällig erzeugte Kennwort wird bei der Installation ausgegeben und liegt in `/etc/pi5-basics-dashboard.token`. Es kann nach der Anmeldung direkt im Dashboard im Abschnitt „Dashboard-Passwort ändern“ geändert werden. Das neue Passwort muss mindestens 12 Zeichen lang sein; nach der Änderung ist eine erneute Anmeldung erforderlich.
 
 Der Dienst läuft als unprivilegierter Benutzer `pi5dashboard`. Nur ein fest begrenzter Root-Helfer darf Wartung oder Backup ausführen. Beide Aktionen verlangen eine Bestätigung im Browser. Für Backups werden nur aktuell eingehängte Dateisysteme direkt unter `/mnt` oder `/media` angeboten. SSD Prepare und Status sind lesende Aktionen.
 
