@@ -286,8 +286,19 @@ install_ttyd() {
     return 1
   }
 
-  url="$(ASSET="$asset" python3 -c 'import json,os,sys; d=json.load(sys.stdin); n=os.environ["ASSET"]; print(next((a["browser_download_url"] for a in d["assets"] if a["name"]==n), ""))' <<<"$release_json")"
-  checksum_url="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((a["browser_download_url"] for a in d["assets"] if a["name"] in ("sha256sum.txt","sha256sums.txt","checksums.txt")), ""))' <<<"$release_json")"
+  mapfile -t asset_urls < <(python3 - "$asset" <<'PY'
+import json, sys
+release = json.load(sys.stdin)
+wanted = sys.argv[1]
+for item in release.get("assets", []):
+    if item.get("name") == wanted:
+        print(item.get("browser_download_url", ""))
+    if item.get("name") in ("sha256sum.txt", "sha256sums.txt", "checksums.txt"):
+        print(item.get("browser_download_url", ""))
+PY
+<<<"$release_json")
+  url="${asset_urls[0]:-}"
+  checksum_url="${asset_urls[1]:-}"
   [[ "$url" == https://github.com/tsl0922/ttyd/releases/download/* ]] || {
     echo "ttyd: passendes offizielles Release-Asset '$asset' nicht gefunden." >&2
     return 1
