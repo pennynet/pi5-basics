@@ -42,4 +42,5 @@ fi
 echo
 echo "-- ZRAM --"; swapon --show 2>/dev/null || true
 echo
-echo "-- Funkstatus --"; rfkill list 2>/dev/null || true
+echo "-- Funkstatus --"; rfkill list 2>/dev/null || echo "rfkill-Informationen nicht verfügbar."
+echo "Hinweis: Soft blocked: yes = per Software deaktiviert; Hard blocked: yes = hardwareseitig gesperrt."
