@@ -145,6 +145,28 @@ class Handler(BaseHTTPRequestHandler):
             body = '<section class="card" style="max-width:420px;margin:50px auto"><h2>Anmeldung</h2><p class="muted">Das Dashboard-Passwort steht in der Installationsausgabe.</p><form method="post" action="/login"><input type="password" name="password" placeholder="Dashboard-Passwort" required autofocus><button>Anmelden</button></form></section>'
             return self.send(200, page("Anmeldung", body))
         csrf = sess["csrf"]
+        if self.path == "/password":
+            new_password = form.get("new_password", [""])[0]
+            confirm_password = form.get("confirm_password", [""])[0]
+            if len(new_password) < 12 or len(new_password) > 256 or "\\n" in new_password or "\\r" in new_password:
+                return self.send(400, page("Passwort ändern", '<p>Das Passwort muss 12 bis 256 Zeichen lang sein und darf keinen Zeilenumbruch enthalten.</p><a href="/">Zurück</a>'))
+            if not secrets.compare_digest(new_password, confirm_password):
+                return self.send(400, page("Passwort ändern", '<p>Die Passwörter stimmen nicht überein.</p><a href="/">Zurück</a>'))
+            try:
+                result = subprocess.run(
+                    ["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "set-password"],
+                    input=new_password + "\\n", text=True, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, timeout=15, check=False
+                )
+            except Exception as exc:
+                return self.send(500, page("Passwort ändern", f'<p>Passwortänderung fehlgeschlagen: {html.escape(str(exc))}</p><a href="/">Zurück</a>'))
+            if result.returncode != 0:
+                return self.send(500, page("Passwort ändern", f'<p>{html.escape(result.stdout.strip() or "Passwortänderung fehlgeschlagen.")}</p><a href="/">Zurück</a>'))
+            global DASHBOARD_PASSWORD
+            DASHBOARD_PASSWORD = new_password
+            SESSIONS.clear()
+            return self.send(200, page("Passwort geändert", '<p>Das Dashboard-Passwort wurde geändert. Bitte melde dich jetzt mit dem neuen Passwort an.</p><a href="/">Zur Anmeldung</a>'),
+                             "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         if self.path == "/logout":
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
@@ -161,6 +183,7 @@ class Handler(BaseHTTPRequestHandler):
 <div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
 </div>
 <div class="card"><h2>Gerät</h2><div class="value">{html.escape(model)}</div><p class="muted">Aktualisiert beim Neuladen der Seite.</p><a href="/">Status aktualisieren</a></div>
+<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required><button>Passwort ändern</button></form></section>
 <div class="actions">
 <section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
 <section class="card"><h2>Maintenance</h2><p class="muted">Paketlisten und Pakete aktualisieren, verwaiste Pakete entfernen und Journal aufräumen.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="maintenance"><label><input type="checkbox" name="confirm" value="yes" required> Ich möchte die Systemwartung jetzt ausführen.</label><button class="danger">Wartung starten</button></form></section>
