@@ -170,6 +170,8 @@ class Handler(BaseHTTPRequestHandler):
         model, temp, ram, uptime, os_name = system_data()
         network = network_data()
         maintenance_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "maintenance-status"], 5).strip()
+        ssh_keys_output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-list"], 5).strip()
+        ssh_keys_html = html.escape(ssh_keys_output) if ssh_keys_output else '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
         maintenance_enabled = maintenance_status.startswith("Automatische Wartung: aktiviert")
         host = self.connection.getsockname()[0].split("%", 1)[0]
         terminal_host = f"[{host}]" if ":" in host else host
@@ -222,7 +224,7 @@ class Handler(BaseHTTPRequestHandler):
 </div>
 
 <section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Administrator pi5terminal mit vollständigen sudo-Rechten. Ein gleichzeitiger Browser-Client.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
-<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-row"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></div></form></section>
+<section class="card"><h2>SSH-Zugang für pi</h2><p class="muted">Öffentlichen Schlüssel aus deiner .pub-Datei hier einfügen. Der private Schlüssel bleibt auf deinem Rechner.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssh-key-add"><textarea name="ssh_key" rows="3" placeholder="ssh-ed25519 AAAA… Kommentar" required style="width:100%;margin:8px 0"></textarea><button>Schlüssel hinzufügen</button></form><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><h3>Installierte Schlüssel</h3>{ssh_keys_html}</section><section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-row"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></div></form></section>
 
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
@@ -283,11 +285,17 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
-        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot"):
+        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot", "ssh-key-add"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
         if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
-        if action in ("shutdown", "reboot"):
+        if action == "ssh-key-add":
+            key = form.get("ssh_key", [""])[0].strip()
+            result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-add"],
+                                    input=key + "\n", text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, timeout=15, check=False)
+            output = result.stdout.strip() or ("Schlüssel hinzugefügt." if result.returncode == 0 else "Fehler beim Hinzufügen.")
+        elif action in ("shutdown", "reboot"):
             # Send a durable result page before starting the power action. The
             # browser can then show the shutdown message or retry after reboot.
             if action == "shutdown":
