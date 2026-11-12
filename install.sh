@@ -238,6 +238,28 @@ else
   echo "Kein Lüfter am FAN-Anschluss bestätigt; Lüfterkonfiguration übersprungen."
 fi
 
+
+# Install the authenticated, LAN-only dashboard as an unprivileged service.
+apt-get install -y python3 sudo
+if ! id pi5dashboard >/dev/null 2>&1; then
+  useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
+fi
+install -d -o root -g pi5dashboard -m 0750 /opt/pi5-basics-dashboard
+install -m 0644 "$PROJECT_DIR/dashboard/app.py" /opt/pi5-basics-dashboard/app.py
+install -o root -g root -m 0755 "$PROJECT_DIR/dashboard/action" /usr/local/sbin/pi5-dashboard-action
+install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-dashboard.service" /etc/systemd/system/pi5-dashboard.service
+if [[ ! -s /etc/pi5-basics-dashboard.token ]]; then
+  DASHBOARD_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+  printf '%s\n' "$DASHBOARD_TOKEN" >/etc/pi5-basics-dashboard.token
+fi
+chown root:pi5dashboard /etc/pi5-basics-dashboard.token
+chmod 0640 /etc/pi5-basics-dashboard.token
+printf '%s\n' 'pi5dashboard ALL=(root) NOPASSWD: /usr/local/sbin/pi5-dashboard-action' >/etc/sudoers.d/pi5-dashboard
+chmod 0440 /etc/sudoers.d/pi5-dashboard
+visudo -cf /etc/sudoers.d/pi5-dashboard
+systemctl daemon-reload
+systemctl enable --now pi5-dashboard.service
+
 # Install helper commands from the checked-out project.
 install -m 0755 "$PROJECT_DIR/commands/pi-status" /usr/local/bin/pi-status
 install -m 0755 "$PROJECT_DIR/commands/pi-maintenance" /usr/local/bin/pi-maintenance
@@ -254,6 +276,6 @@ fi
 echo
 echo "Installation abgeschlossen."
 echo "Prüfen: pi-status"
-echo "SSD-Vorbereitung: pi-ssd-prepare"
+echo "SSD-Vorbereitung: pi-ssd-prepare"\necho "Dashboard: http://raspberrypi.local:8080"\necho "Dashboard-Passwort anzeigen: sudo cat /etc/pi5-basics-dashboard.token"
 echo "Protokoll: $LOG_FILE"
 echo "Hinweis: Die Bootreihenfolge wurde nicht verändert."
