@@ -401,6 +401,8 @@ install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
 systemctl daemon-reload
 systemctl enable pi5-dashboard.service pi5-terminal.service nginx.service
+# Release the old ttyd listener on 7681 before nginx takes over that port.
+systemctl stop pi5-terminal.service || true
 # Nginx owns the LAN firewall rule and exposes only its authenticated proxy.
 systemctl restart nginx.service
 # Restart so updated application and unit files are active on repeat installs.
