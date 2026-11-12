@@ -168,6 +168,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abmelden", '<p>Zum Abmelden bitte die Schaltfläche verwenden.</p>'))
         model, temp, ram, uptime, os_name = system_data()
         network = network_data()
+        maintenance_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "maintenance-status"], 5).strip()
+        maintenance_enabled = maintenance_status.startswith("Automatische Wartung: aktiviert")
         host = self.connection.getsockname()[0].split("%", 1)[0]
         terminal_host = f"[{host}]" if ":" in host else host
         terminal_url = f"http://{terminal_host}:7681/"
@@ -209,6 +211,7 @@ class Handler(BaseHTTPRequestHandler):
 <div class="actions">
 <section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
 <section class="card"><h2>Maintenance</h2><p class="muted">Paketlisten und Pakete aktualisieren, verwaiste Pakete entfernen und Journal aufräumen.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="maintenance"><label><input type="checkbox" name="confirm" value="yes" required> Ich möchte die Systemwartung jetzt ausführen.</label><button class="danger">Wartung starten</button></form></section>
+<section class="card"><h2>Automatische Wartung</h2><p class="muted">Wöchentlich sonntags um 04:00 Uhr. Kein automatischer Neustart. Protokoll: /var/log/pi5-basics-maintenance.log</p><p class="value">{html.escape(maintenance_status or "Status nicht verfügbar")}</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="{ "maintenance-disable" if maintenance_enabled else "maintenance-enable" }"><button class="{ "danger" if maintenance_enabled else "" }">{ "Automatische Wartung deaktivieren" if maintenance_enabled else "Automatische Wartung aktivieren" }</button></form></section>
 <section class="card"><h2>SSD Prepare</h2><p class="muted">Rein lesende Bestandsaufnahme von Datenträgern, NVMe und Bootloader.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssd"><button>SSD-Status anzeigen</button></form></section>
 <section class="card"><h2>Systemdetails</h2><p class="muted">Ausgabe der vorhandenen pi-status-Funktion.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="status"><button>Statusdetails anzeigen</button></form></section>
 </div>
@@ -281,11 +284,13 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
-        if action not in ("status", "ssd", "maintenance", "backup"):
+        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
         if action in ("maintenance", "backup") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
-        if action == "status":
+        if action in ("maintenance-enable", "maintenance-disable"):
+            output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", action], timeout=30)
+        elif action == "status":
             output = run_readonly(["/usr/local/bin/pi-status"])
         elif action == "ssd":
             output = run_readonly(["/usr/local/bin/pi-ssd-prepare"])
