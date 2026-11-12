@@ -253,14 +253,30 @@ fi
 
 
 # Install the authenticated, LAN-only dashboard as an unprivileged service.
-apt-get install -y python3 sudo
+apt-get install -y python3 sudo ttyd
 if ! id pi5dashboard >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
 fi
+
+# Dedicated unprivileged account and authenticated terminal service.
+if ! id pi5terminal >/dev/null 2>&1; then
+  useradd --system --home-dir /home/pi5terminal --create-home --shell /bin/bash --user-group pi5terminal
+fi
+install -d -o pi5terminal -g pi5terminal -m 0700 /home/pi5terminal
+if [[ ! -s /etc/pi5-basics-terminal.env ]]; then
+  TERMINAL_PASSWORD="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+  {
+    printf 'TERMINAL_USER=pi5terminal\\n'
+    printf 'TERMINAL_PASSWORD=%s\\n' "$TERMINAL_PASSWORD"
+  } >/etc/pi5-basics-terminal.env
+fi
+chown root:root /etc/pi5-basics-terminal.env
+chmod 0600 /etc/pi5-basics-terminal.env
 install -d -o root -g pi5dashboard -m 0750 /opt/pi5-basics-dashboard
 install -m 0644 "$PROJECT_DIR/dashboard/app.py" /opt/pi5-basics-dashboard/app.py
 install -o root -g root -m 0755 "$PROJECT_DIR/dashboard/action" /usr/local/sbin/pi5-dashboard-action
 install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-dashboard.service" /etc/systemd/system/pi5-dashboard.service
+install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-terminal.service" /etc/systemd/system/pi5-terminal.service
 if [[ ! -s /etc/pi5-basics-dashboard.token ]]; then
   DASHBOARD_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
   printf '%s\n' "$DASHBOARD_TOKEN" >/etc/pi5-basics-dashboard.token
@@ -278,6 +294,7 @@ install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
 systemctl daemon-reload
 systemctl enable --now pi5-dashboard.service
+systemctl enable --now pi5-terminal.service
 
 if [[ "$ENABLE_WATCHDOG" == "1" && -e /dev/watchdog ]]; then
   apt-get install -y watchdog
@@ -293,5 +310,9 @@ echo "SSD-Vorbereitung: pi-ssd-prepare"
 echo "Dashboard: http://raspberrypi.local:8080"
 echo "Dashboard-Anmeldepasswort (bitte sicher aufbewahren):"
 cat /etc/pi5-basics-dashboard.token
+echo "Terminal: http://raspberrypi.local:7681 (ein gleichzeitiger Client)"
+echo "Terminal-Anmeldedaten: Benutzer pi5terminal; Passwort:"
+sed -n 's/^TERMINAL_PASSWORD=//p' /etc/pi5-basics-terminal.env
+echo "Das Terminal läuft als unprivilegierter Benutzer ohne sudo-Rechte."
 echo "Protokoll: $LOG_FILE"
 echo "Hinweis: Die Bootreihenfolge wurde nicht verändert."
