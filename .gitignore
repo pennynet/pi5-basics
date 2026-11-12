@@ -1,0 +1,34 @@
+# Logs and runtime data
+*.log
+logs/
+*.pid
+*.seed
+
+# Backups and temporary files
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Local settings and secrets
+.env
+.env.*
+!.env.example
+config/local.conf
+secrets/
+*.key
+*.pem
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
