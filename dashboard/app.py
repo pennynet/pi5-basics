@@ -171,7 +171,24 @@ class Handler(BaseHTTPRequestHandler):
         network = network_data()
         maintenance_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "maintenance-status"], 5).strip()
         ssh_keys_output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-list"], 5).strip()
-        ssh_keys_html = html.escape(ssh_keys_output) if ssh_keys_output else '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
+        ssh_keys_html = ""
+        if ssh_keys_output:
+            for key_line in ssh_keys_output.splitlines():
+                fields = key_line.split()
+                if len(fields) < 2 or not fields[1].startswith("SHA256:"):
+                    continue
+                fingerprint = fields[1]
+                ssh_keys_html += (
+                    '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0">'
+                    f'<code style="overflow-wrap:anywhere">{html.escape(key_line)}</code>'
+                    '<form method="post" action="/action">'
+                    f'<input type="hidden" name="csrf" value="{csrf}">'
+                    '<input type="hidden" name="action" value="ssh-key-delete">'
+                    f'<input type="hidden" name="fingerprint" value="{html.escape(fingerprint, quote=True)}">'
+                    '<button class="danger" type="submit">Löschen</button></form></div>'
+                )
+        if not ssh_keys_html:
+            ssh_keys_html = '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
         maintenance_enabled = maintenance_status.startswith("Automatische Wartung: aktiviert")
         host = self.connection.getsockname()[0].split("%", 1)[0]
         terminal_host = f"[{host}]" if ":" in host else host
@@ -285,11 +302,19 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
-        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot", "ssh-key-add"):
+        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot", "ssh-key-add", "ssh-key-delete"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
         if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
-        if action == "ssh-key-add":
+        if action == "ssh-key-delete":
+            fingerprint = form.get("fingerprint", [""])[0]
+            if not fingerprint.startswith("SHA256:") or not fingerprint[7:] or not all(c.isalnum() or c in "-_" for c in fingerprint[7:]):
+                return self.send(400, page("Fehler", "<p>Ungültiger Schlüssel-Fingerabdruck.</p><a href='/'>Zurück</a>"))
+            result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-delete"],
+                                    input=fingerprint + "\n", text=True, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, timeout=15, check=False)
+            output = result.stdout.strip() or ("Schlüssel gelöscht." if result.returncode == 0 else "Fehler beim Löschen.")
+        elif action == "ssh-key-add":
             key = form.get("ssh_key", [""])[0].strip()
             result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-add"],
                                     input=key + "\n", text=True, stdout=subprocess.PIPE,
