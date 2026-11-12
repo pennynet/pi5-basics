@@ -1,0 +1,29 @@
+[Unit]
+Description=pi5-basics LAN Dashboard
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi5dashboard
+Group=pi5dashboard
+WorkingDirectory=/opt/pi5-basics-dashboard
+ExecStart=/usr/bin/python3 /opt/pi5-basics-dashboard/app.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadOnlyPaths=/etc/os-release /proc /sys
+ReadWritePaths=/var/lib/pi5-dashboard
+
+[Install]
+WantedBy=multi-user.target
