@@ -4,6 +4,7 @@ import html
 import http.cookies
 import ipaddress
 import os
+import re
 import secrets
 import socket
 import shutil
@@ -181,11 +182,17 @@ class Handler(BaseHTTPRequestHandler):
                 ssh_keys_html += (
                     '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0">'
                     f'<code style="overflow-wrap:anywhere">{html.escape(key_line)}</code>'
+                    '<details class="confirm-pop">'
+                    '<summary class="danger" style="width:190px;text-align:center">Schlüssel löschen</summary>'
+                    '<div class="confirm-overlay"><section class="confirm-dialog" role="dialog" aria-modal="true">'
+                    '<h2>SSH-Schlüssel löschen?</h2>'
+                    f'<p class="muted">Soll dieser Schlüssel wirklich dauerhaft aus dem SSH-Zugang von pi entfernt werden?</p><p><code>{html.escape(fingerprint)}</code></p>'
                     '<form method="post" action="/action">'
                     f'<input type="hidden" name="csrf" value="{csrf}">'
                     '<input type="hidden" name="action" value="ssh-key-delete">'
                     f'<input type="hidden" name="fingerprint" value="{html.escape(fingerprint, quote=True)}">'
-                    '<button class="danger" type="submit" style="width:190px;flex:0 0 190px;white-space:nowrap">Schlüssel löschen</button></form></div>'
+                    '<button class="danger" type="submit">Ja, Schlüssel löschen</button></form>'
+                    '<a href="/">Abbrechen</a></section></div></details></div>'
                 )
         if not ssh_keys_html:
             ssh_keys_html = '<p class="muted">Noch keine Schlüssel hinterlegt.</p>'
@@ -308,7 +315,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
         if action == "ssh-key-delete":
             fingerprint = form.get("fingerprint", [""])[0]
-            if not fingerprint.startswith("SHA256:") or not fingerprint[7:] or not all(c.isalnum() or c in "-_" for c in fingerprint[7:]):
+            if not re.fullmatch(r"SHA256:[A-Za-z0-9+/]+={0,2}", fingerprint):
                 return self.send(400, page("Fehler", "<p>Ungültiger Schlüssel-Fingerabdruck.</p><a href='/'>Zurück</a>"))
             result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-delete"],
                                     input=fingerprint + "\n", text=True, stdout=subprocess.PIPE,
