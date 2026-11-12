@@ -316,7 +316,12 @@ PY
   trap 'if [[ "$tmp_created" == "1" ]]; then rm -rf "$tmpdir"; fi' EXIT
   curl --fail --silent --show-error --location "$url" -o "$tmpdir/ttyd"
   curl --fail --silent --show-error --location "$checksum_url" -o "$tmpdir/checksums.txt"
-  expected="$(awk -v name="$asset" '$2==name || $2=="*"name {print $1; exit}' "$tmpdir/checksums.txt")"
+  expected="$(awk -v name="$asset" '{
+    filename=$2
+    sub(/^\\*/, "", filename)
+    sub(/^\\.\\//, "", filename)
+    if (filename == name) {print $1; exit}
+  }' "$tmpdir/checksums.txt")"
   [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || {
     echo "ttyd: SHA-256 für $asset fehlt in der Prüfsummendatei." >&2
     return 1
