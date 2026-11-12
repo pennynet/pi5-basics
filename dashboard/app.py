@@ -58,12 +58,14 @@ def mounted_targets():
     found = []
     for root in (Path("/mnt"), Path("/media")):
         if root.exists():
-            for p in root.glob("*"):
-                try:
-                    if p.is_dir() and os.path.ismount(p):
-                        found.append(str(p))
-                except OSError:
-                    pass
+            # Cover /mnt/disk and common desktop automounts such as /media/user/disk.
+            for pattern in ("*", "*/*"):
+                for p in root.glob(pattern):
+                    try:
+                        if p.is_dir() and os.path.ismount(p):
+                            found.append(str(p))
+                    except OSError:
+                        pass
     return sorted(set(found))
 
 def page(title, body, csrf=""):
