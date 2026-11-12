@@ -254,7 +254,7 @@ fi
 
 
 # Install the authenticated, LAN-only dashboard as an unprivileged service.
-apt-get install -y python3 sudo ttyd nftables
+apt-get install -y python3 sudo ttyd nftables iproute2
 if ! id pi5dashboard >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
 fi
