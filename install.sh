@@ -263,7 +263,7 @@ fi
 
 
 # Install the authenticated, LAN-only dashboard as an unprivileged service.
-apt-get install -y python3 sudo nftables iproute2 curl ca-certificates
+apt-get install -y python3 sudo nftables iproute2 curl ca-certificates nginx apache2-utils
 if ! id pi5dashboard >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
 fi
@@ -363,6 +363,21 @@ if [[ ! -s /etc/pi5-basics-terminal.env ]]; then
 fi
 chown root:root /etc/pi5-basics-terminal.env
 chmod 0600 /etc/pi5-basics-terminal.env
+# Keep terminal credentials at nginx; ttyd itself listens only on loopback.
+set -a
+. /etc/pi5-basics-terminal.env
+set +a
+[[ "$TERMINAL_USER" == "pi5terminal" && -n "$TERMINAL_PASSWORD" ]] || {
+  echo "Ungültige Terminal-Zugangsdaten in /etc/pi5-basics-terminal.env." >&2
+  exit 1
+}
+printf '%s\\n' "$TERMINAL_PASSWORD" | htpasswd -i -B -c /etc/nginx/pi5-terminal.htpasswd "$TERMINAL_USER"
+chown root:www-data /etc/nginx/pi5-terminal.htpasswd
+chmod 0640 /etc/nginx/pi5-terminal.htpasswd
+install -m 0644 "$PROJECT_DIR/systemd/pi5-terminal-nginx.conf" /etc/nginx/conf.d/pi5-terminal.conf
+install -d -m 0755 /etc/systemd/system/nginx.service.d
+install -m 0644 "$PROJECT_DIR/systemd/nginx-pi5-terminal.conf" /etc/systemd/system/nginx.service.d/pi5-terminal-firewall.conf
+nginx -t
 install -d -o root -g pi5dashboard -m 0750 /opt/pi5-basics-dashboard
 install -m 0644 "$PROJECT_DIR/dashboard/app.py" /opt/pi5-basics-dashboard/app.py
 install -o root -g root -m 0755 "$PROJECT_DIR/dashboard/action" /usr/local/sbin/pi5-dashboard-action
@@ -385,8 +400,11 @@ install -m 0755 "$PROJECT_DIR/commands/pi-maintenance" /usr/local/bin/pi-mainten
 install -m 0755 "$PROJECT_DIR/commands/pi-backup" /usr/local/bin/pi-backup
 install -m 0755 "$PROJECT_DIR/commands/pi-ssd-prepare" /usr/local/bin/pi-ssd-prepare
 systemctl daemon-reload
-systemctl enable pi5-dashboard.service pi5-terminal.service
+systemctl enable pi5-dashboard.service pi5-terminal.service nginx.service
+# Nginx owns the LAN firewall rule and exposes only its authenticated proxy.
+systemctl restart nginx.service
 # Restart so updated application and unit files are active on repeat installs.
+systemctl restart pi5-terminal.service
 systemctl restart pi5-dashboard.service
 systemctl restart pi5-terminal.service
 
