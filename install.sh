@@ -264,6 +264,7 @@ fi
 # and pin the deployed version/path locally for repeatable installer runs.
 install_ttyd() {
   local arch asset release_api release_json tag url checksum_url tmpdir expected actual
+  local tmp_created=0
   arch="$(dpkg --print-architecture)"
   case "$arch" in
     arm64) asset="ttyd.aarch64" ;;
@@ -280,7 +281,7 @@ install_ttyd() {
   release_api="https://api.github.com/repos/tsl0922/ttyd/releases/latest"
   release_json="$(curl --fail --silent --show-error --location "$release_api")"
   tag="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])' <<<"$release_json")"
-  [[ "$tag" =~ ^[vV]?[0-9]+(\\.[0-9]+){1,2}$ ]] || {
+  [[ "$tag" =~ ^[vV]?[0-9]+(\.[0-9]+){1,2}$ ]] || {
     echo "ttyd: unerwartetes Release-Tag-Format: $tag" >&2
     return 1
   }
@@ -297,7 +298,8 @@ install_ttyd() {
   }
 
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  tmp_created=1
+  trap 'if [[ "$tmp_created" == "1" ]]; then rm -rf "$tmpdir"; fi' EXIT
   curl --fail --silent --show-error --location "$url" -o "$tmpdir/ttyd"
   curl --fail --silent --show-error --location "$checksum_url" -o "$tmpdir/checksums.txt"
   expected="$(awk -v name="$asset" '$2==name || $2=="*"name {print $1; exit}' "$tmpdir/checksums.txt")"
@@ -311,6 +313,9 @@ install_ttyd() {
     return 1
   }
   install -o root -g root -m 0755 "$tmpdir/ttyd" /usr/local/bin/ttyd
+  rm -rf "$tmpdir"
+  tmp_created=0
+  trap - EXIT
   /usr/local/bin/ttyd --version
   echo "ttyd $tag installiert (SHA-256 geprüft)."
 }
