@@ -278,6 +278,7 @@ echo "Installation abgeschlossen."
 echo "Prüfen: pi-status"
 echo "SSD-Vorbereitung: pi-ssd-prepare"
 echo "Dashboard: http://raspberrypi.local:8080"
-echo "Dashboard-Passwort anzeigen: sudo cat /etc/pi5-basics-dashboard.token"
+echo "Dashboard-Anmeldepasswort (bitte sicher aufbewahren):"
+cat /etc/pi5-basics-dashboard.token
 echo "Protokoll: $LOG_FILE"
 echo "Hinweis: Die Bootreihenfolge wurde nicht verändert."
