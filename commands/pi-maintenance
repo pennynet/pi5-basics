@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ $EUID -ne 0 ]]; then exec sudo "$0" "$@"; fi
+echo "Paketlisten aktualisieren und installierte Pakete aktualisieren."
+read -r -p "Fortfahren? [j/N] " answer
+[[ "$answer" =~ ^[JjYy]$ ]] || exit 0
+apt-get update
+apt-get upgrade -y
+apt-get autoremove --purge -y
+apt-get clean
+journalctl --vacuum-time=14d
+echo "Wartung abgeschlossen."
