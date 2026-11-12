@@ -172,6 +172,9 @@ class Handler(BaseHTTPRequestHandler):
         network = network_data()
         maintenance_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "maintenance-status"], 5).strip()
         ssh_keys_output = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-key-list"], 5).strip()
+        ssh_password_status = run_readonly(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-status"], 5).strip()
+        ssh_password_enabled = ssh_password_status.endswith("aktiviert")
+        ssh_key_count = sum(1 for line in ssh_keys_output.splitlines() if len(line.split()) >= 2 and line.split()[1].startswith("SHA256:"))
         ssh_keys_html = ""
         if ssh_keys_output:
             for key_line in ssh_keys_output.splitlines():
@@ -248,7 +251,7 @@ class Handler(BaseHTTPRequestHandler):
 </div>
 
 <section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Administrator pi5terminal mit vollständigen sudo-Rechten. Ein gleichzeitiger Browser-Client.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
-<section class="card"><h2>SSH-Zugang für pi</h2><p class="muted">Öffentlichen Schlüssel aus deiner .pub-Datei hier einfügen. Der private Schlüssel bleibt auf deinem Rechner. Abruf z. B. mit <code>cat ~/.ssh/id_ed25519.pub</code>.</p><form method="post" action="/action" style="display:flex;align-items:center;gap:12px;margin:8px 0"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssh-key-add"><textarea name="ssh_key" rows="2" placeholder="ssh-ed25519 AAAA… Kommentar" required style="flex:1;min-width:0;margin:0"></textarea><button type="submit" style="width:190px;white-space:nowrap">Schlüssel hinzufügen</button></form><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><h3>Installierte Schlüssel</h3>{ssh_keys_html}</section><section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-row"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button style="width:190px;white-space:nowrap">Passwort ändern</button></div></form></section>
+<section class="card"><h2>SSH-Zugang für pi</h2><p class="muted">Öffentlichen Schlüssel aus deiner .pub-Datei hier einfügen. Der private Schlüssel bleibt auf deinem Rechner. Abruf z. B. mit <code>cat ~/.ssh/id_ed25519.pub</code>.</p><form method="post" action="/action" style="display:flex;align-items:center;gap:12px;margin:8px 0"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssh-key-add"><textarea name="ssh_key" rows="2" placeholder="ssh-ed25519 AAAA… Kommentar" required style="flex:1;min-width:0;margin:0"></textarea><button type="submit" style="width:190px;white-space:nowrap">Schlüssel hinzufügen</button></form><hr style="border:0;border-top:1px solid var(--line);margin:16px 0"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h3 style="margin:0">Installierte Schlüssel</h3><form method="post" action="/action" style="display:flex;align-items:center;gap:8px"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssh-password-auth"><input type="hidden" name="enabled" value="no"><label style="margin:0"><input type="checkbox" name="enabled" value="yes" {"checked" if ssh_password_enabled else ""} {"disabled" if ssh_key_count == 0 and not ssh_password_enabled else ""} onchange="this.form.submit()"> Passwortanmeldung erlauben</label></form></div><p class="muted">{"SSH-Passwortanmeldung ist aktiviert." if ssh_password_enabled else "SSH-Passwortanmeldung ist deaktiviert."} {"Mindestens ein Schlüssel ist erforderlich, um sie abzuschalten." if ssh_key_count == 0 else ""}</p>{ssh_keys_html}</section><section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-row"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button style="width:190px;white-space:nowrap">Passwort ändern</button></div></form></section>
 
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
@@ -309,10 +312,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, page("Abgemeldet", '<p>Du bist abgemeldet. <a href="/">Anmelden</a></p>'),
                              "pi5session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
         action = form.get("action", [""])[0]
-        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot", "ssh-key-add", "ssh-key-delete"):
+        if action not in ("status", "ssd", "maintenance", "backup", "maintenance-enable", "maintenance-disable", "shutdown", "reboot", "ssh-key-add", "ssh-key-delete", "ssh-password-auth"):
             return self.send(400, page("Fehler", "<p>Unbekannte Aktion.</p>"))
         if action in ("maintenance", "backup", "shutdown", "reboot") and form.get("confirm", [""])[0] != "yes":
             return self.send(400, page("Bestätigung fehlt", '<p>Aktion wurde nicht gestartet. <a href="/">Zurück</a></p>'))
+        if action == "ssh-password-auth":
+            enabled = form.get("enabled", ["no"])[0] == "yes"
+            result = subprocess.run(["sudo", "-n", "/usr/local/sbin/pi5-dashboard-action", "ssh-password-auth", "enable" if enabled else "disable"],
+                                    text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=20, check=False)
+            output = result.stdout.strip() or ("Einstellung gespeichert." if result.returncode == 0 else "Änderung fehlgeschlagen.")
         if action == "ssh-key-delete":
             fingerprint = form.get("fingerprint", [""])[0]
             if not re.fullmatch(r"SHA256:[A-Za-z0-9+/]+={0,2}", fingerprint):
