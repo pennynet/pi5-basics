@@ -108,7 +108,7 @@ Der Installer installiert `ttyd` und richtet einen eigenen Dienst auf Port 7681 
 - Separate HTTP-Basic-Authentication-Zugangsdaten; das Passwort wird bei der ersten Installation zufällig erzeugt und bei erneuter Installation beibehalten.
 - Zugangsdaten liegen in `/etc/pi5-basics-terminal.env`, Eigentümer root, Modus 0600. Später anzeigen: `sudo cat /etc/pi5-basics-terminal.env`.
 - Der Terminalbenutzer ist nicht Mitglied der sudo-Gruppe und erhält keine sudo-Regel. Für Root-Aufgaben weiterhin SSH oder lokale Konsole mit einem administrativen Benutzer verwenden.
-- systemd begrenzt den Netzwerkzugriff auf private IPv4-Netze sowie IPv6 ULA-/Link-Local-Bereiche. Der Dienst lauscht auf Port 7681; die IP-Filter werden durch systemd/cgroup-BPF durchgesetzt.
+- Ein eigener nftables-Input-Chain schützt ausschließlich TCP-Port 7681: erlaubt sind private IPv4-Netze sowie IPv6 ULA-/Link-Local-Adressen und Loopback; andere Quelladressen werden verworfen. Die ausgehende Netzwerkverbindung der Shell bleibt verfügbar. Die Regel wird beim Start des Terminaldienstes angelegt und beim Stoppen entfernt.
 - Der Dienst läuft mit gehärteten systemd-Einstellungen und ohne Linux-Capabilities.
 
 **Wichtige Transportgrenze:** ttyd verwendet hier HTTP/WebSocket ohne TLS. Basic Authentication verschlüsselt das Passwort nicht. Deshalb ausschließlich in einem vertrauenswürdigen Heimnetz betreiben, niemals Port 7681 oder 8080 ins Internet weiterleiten. Für Fernzugriff VPN verwenden; für verschlüsselten Browserzugriff im LAN beide Dienste hinter einen korrekt konfigurierten HTTPS-Reverse-Proxy stellen.
