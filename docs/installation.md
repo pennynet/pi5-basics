@@ -97,3 +97,34 @@ Dienst prüfen:
 sudo systemctl status pi5-dashboard
 sudo journalctl -u pi5-dashboard -n 50 --no-pager
 ~~~
+
+
+## Interaktives Linux-Terminal
+
+Der Installer installiert `ttyd` und richtet einen eigenen Dienst auf Port 7681 ein. Das Dashboard bettet das Terminal ein; alternativ kann es separat unter `http://<pi-ip>:7681` geöffnet werden.
+
+- Linux-Benutzer: `pi5terminal`, Shell: Bash, Home: `/home/pi5terminal`.
+- Eine gleichzeitige Browserverbindung (`--max-clients 1`).
+- Separate HTTP-Basic-Authentication-Zugangsdaten; das Passwort wird bei der ersten Installation zufällig erzeugt und bei erneuter Installation beibehalten.
+- Zugangsdaten liegen in `/etc/pi5-basics-terminal.env`, Eigentümer root, Modus 0600. Später anzeigen: `sudo cat /etc/pi5-basics-terminal.env`.
+- Der Terminalbenutzer ist nicht Mitglied der sudo-Gruppe und erhält keine sudo-Regel. Für Root-Aufgaben weiterhin SSH oder lokale Konsole mit einem administrativen Benutzer verwenden.
+- systemd begrenzt den Netzwerkzugriff auf private IPv4-Netze sowie IPv6 ULA-/Link-Local-Bereiche. Der Dienst lauscht auf Port 7681; die IP-Filter werden durch systemd/cgroup-BPF durchgesetzt.
+- Der Dienst läuft mit gehärteten systemd-Einstellungen und ohne Linux-Capabilities.
+
+**Wichtige Transportgrenze:** ttyd verwendet hier HTTP/WebSocket ohne TLS. Basic Authentication verschlüsselt das Passwort nicht. Deshalb ausschließlich in einem vertrauenswürdigen Heimnetz betreiben, niemals Port 7681 oder 8080 ins Internet weiterleiten. Für Fernzugriff VPN verwenden; für verschlüsselten Browserzugriff im LAN beide Dienste hinter einen korrekt konfigurierten HTTPS-Reverse-Proxy stellen.
+
+Dienst prüfen:
+
+~~~bash
+sudo systemctl status pi5-terminal
+sudo journalctl -u pi5-terminal -n 50 --no-pager
+sudo ss -ltnp | grep ':7681'
+~~~
+
+Terminaldienst stoppen/deaktivieren:
+
+~~~bash
+sudo systemctl disable --now pi5-terminal
+~~~
+
+Bei erneutem Installerlauf wird der Dienst wieder aktiviert. Das Terminalpasswort kann nicht über das Dashboard geändert werden; eine Rotation erfordert eine kontrollierte Änderung von `/etc/pi5-basics-terminal.env` und einen Neustart des Dienstes.
