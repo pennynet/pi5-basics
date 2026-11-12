@@ -70,3 +70,25 @@ Die Lüftersteuerung des Raspberry Pi 5 erfolgt über die Firmware und den dediz
 Vor der Änderung wird `/boot/firmware/config.txt` mit Zeitstempel gesichert. Der Installer ersetzt nur seinen eigenen markierten Abschnitt und lässt andere Konfigurationseinträge stehen. Änderungen werden nach einem Neustart aktiv. Wenn kein Lüfter bestätigt wird, wird die Datei nicht angefasst.
 
 Ein 3-Pin-Lüfter oder ein Lüfter an GPIO/USB wird von dieser Abfrage nicht als kompatibler FAN-Header-Lüfter behandelt; dafür ist eine andere Steuerung nötig.
+
+
+## Web-Dashboard
+
+Der Installer richtet einen Webdienst auf Port 8080 ein. Im Heimnetz ist er üblicherweise unter `http://raspberrypi.local:8080` oder über die IP-Adresse des Pi erreichbar.
+
+Das zufällig erzeugte Kennwort steht in:
+
+~~~bash
+sudo cat /etc/pi5-basics-dashboard.token
+~~~
+
+Der Dienst läuft als unprivilegierter Benutzer `pi5dashboard`. Nur ein fest begrenzter Root-Helfer darf Wartung oder Backup ausführen. Beide Aktionen verlangen eine Bestätigung im Browser. Für Backups werden nur aktuell eingehängte Dateisysteme direkt unter `/mnt` oder `/media` angeboten. SSD Prepare und Status sind lesende Aktionen.
+
+**Sicherheit:** Das Dashboard ist für ein vertrauenswürdiges privates Heimnetz gedacht. HTTP verschlüsselt die Verbindung nicht. Port 8080 keinesfalls ins Internet weiterleiten. Für Fernzugriff VPN (z. B. Tailscale) oder einen korrekt eingerichteten HTTPS-Reverse-Proxy verwenden.
+
+Dienst prüfen:
+
+~~~bash
+sudo systemctl status pi5-dashboard
+sudo journalctl -u pi5-dashboard -n 50 --no-pager
+~~~
