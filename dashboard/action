@@ -22,7 +22,7 @@ case "$ACTION" in
     ;;
   ssh-key-delete)
     IFS= read -r FINGERPRINT || { echo "Kein Fingerabdruck empfangen." >&2; exit 2; }
-    [[ "$FINGERPRINT" =~ ^SHA256:[A-Za-z0-9_-]+$ ]] || { echo "Ungültiger Fingerabdruck." >&2; exit 2; }
+    [[ "$FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]+={0,2}$ ]] || { echo "Ungültiger Fingerabdruck." >&2; exit 2; }
     PI_HOME="$(getent passwd pi | cut -d: -f6)"
     [[ -n "$PI_HOME" && -d "$PI_HOME" ]] || { echo "Benutzer pi nicht gefunden." >&2; exit 1; }
     AUTH="$PI_HOME/.ssh/authorized_keys"
