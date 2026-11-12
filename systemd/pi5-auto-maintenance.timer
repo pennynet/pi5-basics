@@ -1,0 +1,10 @@
+[Unit]
+Description=Run pi5-basics maintenance every Sunday at 04:00
+
+[Timer]
+OnCalendar=Sun *-*-* 04:00:00
+Persistent=true
+Unit=pi5-auto-maintenance.service
+
+[Install]
+WantedBy=timers.target
