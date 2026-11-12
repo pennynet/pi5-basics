@@ -289,12 +289,15 @@ install_ttyd() {
   mapfile -t asset_urls < <(python3 - "$asset" <<'PY'
 import json, sys
 release = json.load(sys.stdin)
-wanted = sys.argv[1]
-for item in release.get("assets", []):
-    if item.get("name") == wanted:
-        print(item.get("browser_download_url", ""))
-    if item.get("name") in ("sha256sum.txt", "sha256sums.txt", "checksums.txt"):
-        print(item.get("browser_download_url", ""))
+wanted = sys.argv[1].lower()
+assets = {item.get("name", "").lower(): item.get("browser_download_url", "")
+          for item in release.get("assets", [])}
+binary_url = assets.get(wanted, "")
+checksum_url = next((assets.get(name, "") for name in
+                     ("sha256sums", "sha256sums.txt", "sha256sum.txt", "checksums.txt")
+                     if assets.get(name, "")), "")
+print(binary_url)
+print(checksum_url)
 PY
 <<<"$release_json")
   url="${asset_urls[0]:-}"
