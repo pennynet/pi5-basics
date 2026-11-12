@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+if [[ $EUID -ne 0 ]]; then echo "Must run as root" >&2; exit 1; fi
+ACTION="${1:-}"
+case "$ACTION" in
+  maintenance)
+    apt-get update
+    apt-get upgrade -y
+    apt-get autoremove --purge -y
+    apt-get clean
+    journalctl --vacuum-time=14d
+    echo "Wartung abgeschlossen."
+    ;;
+  backup)
+    [[ $# -eq 2 ]] || { echo "Backup target required" >&2; exit 2; }
+    TARGET="$2"
+    case "$TARGET" in /mnt/*|/media/*) ;; *) echo "Target must be under /mnt or /media" >&2; exit 2 ;; esac
+    [[ -d "$TARGET" && "$TARGET" != "/" && "$(realpath "$TARGET")" == "$TARGET" ]] || { echo "Ungültiges Ziel" >&2; exit 2; }
+    mountpoint -q "$TARGET" || { echo "Ziel ist kein eigener Mountpoint" >&2; exit 2; }
+    STAMP="$(date +%F_%H%M%S)"
+    DEST="$TARGET/pi5-backup-$STAMP"
+    mkdir -m 0750 "$DEST"
+    rsync -aHAX --numeric-ids --one-file-system --info=progress2 /etc /home /root /boot/firmware "$DEST/"
+    echo "Backup erstellt: $DEST"
+    echo "Datei-Backup, kein garantiert bootfähiges Image."
+    ;;
+  *) echo "Erlaubt: maintenance | backup /mnt|/media mountpoint" >&2; exit 2 ;;
+esac
