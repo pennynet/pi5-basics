@@ -56,16 +56,34 @@ def system_data():
     return model, temperature, ram, uptime, os_name
 
 def network_data():
-    """Return useful interface/IP information even when the ip command is unavailable."""
+    """Return interface and IPv4 information only; IPv6 addresses are intentionally hidden."""
     output = run_readonly(["/usr/sbin/ip", "-brief", "address"], 5)
     if output and not output.startswith("Fehler:") and output.strip():
-        lines = [line for line in output.splitlines() if not line.lstrip().startswith("lo ")]
+        lines = []
+        for line in output.splitlines():
+            parts = line.split()
+            if not parts or parts[0] == "lo":
+                continue
+            ipv4 = []
+            for item in parts[2:]:
+                try:
+                    if ipaddress.ip_interface(item).version == 4:
+                        ipv4.append(item)
+                except ValueError:
+                    continue
+            if ipv4:
+                lines.append(" ".join(parts[:2] + ipv4))
         if lines:
-            return "\n".join(lines)
+            return "\\n".join(lines)
     fallback = run_readonly(["/usr/bin/hostname", "-I"], 5).strip()
-    if fallback and not fallback.startswith("Fehler:"):
-        return "IP-Adresse(n): " + fallback
-    return "Keine Netzwerkadresse ermittelbar (iproute2/Netzwerkverbindung prüfen)."
+    ipv4 = []
+    for item in fallback.split():
+        try:
+            if ipaddress.ip_address(item).version == 4:
+                ipv4.append(item)
+        except ValueError:
+            pass
+    return "IPv4: " + " ".join(ipv4) if ipv4 else "Keine IPv4-Netzwerkadresse ermittelbar."
 
 def mounted_targets():
     found = []
@@ -188,23 +206,24 @@ class Handler(BaseHTTPRequestHandler):
         alert_html = ('<div class="alertbox"><strong>⚠ Probleme erkannt</strong><ul>' + ''.join('<li>' + html.escape(item) + '</li>' for item in alerts) + '</ul></div>') if alerts else ""
         body = f"""
 {alert_html}
-<div class="grid">
-<div class="card"><div class="muted">CPU-Temperatur</div><div class="value">{html.escape(temp)}</div><div class="metricbar { "bad" if "tval" in locals() and tval >= 75 else "warn" if "tval" in locals() and tval >= 60 else "" }"><span style="width:{min(100, max(0, tval if "tval" in locals() else 0)):.0f}%"></span></div><p class="muted">Warnschwelle 75 °C</p></div>
-<div class="card"><div class="muted">RAM-Auslastung</div><div class="value">{html.escape(ram)}</div><div class="metricbar { "bad" if ram_pct >= 90 else "warn" if ram_pct >= 75 else "good" }"><span style="width:{ram_pct}%"></span></div></div>
-<div class="card"><div class="muted">Root-Speicher</div><div class="value">{disk_pct} %</div><div class="metricbar { "bad" if disk_pct >= 90 else "warn" if disk_pct >= 75 else "good" }"><span style="width:{disk_pct}%"></span></div><p class="muted">{html.escape(disk_info)}</p></div>
-<div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
-<div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
-<div class="card"><div class="muted">Netzwerk / IP</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
-</div>
-
-<section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Benutzer pi5terminal. Ein gleichzeitiger Browser-Client. Das Terminal hat keine sudo-Rechte.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
-<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></form></section>
 <div class="actions">
 <section class="card"><h2>Backup</h2><p class="muted">Datei-Backup von /etc, /home, /root und /boot/firmware auf ein separates, eingehängtes Laufwerk.</p>{backup_form}</section>
 <section class="card"><h2>Maintenance</h2><p class="muted">Paketlisten und Pakete aktualisieren, verwaiste Pakete entfernen und Journal aufräumen.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="maintenance"><label><input type="checkbox" name="confirm" value="yes" required> Ich möchte die Systemwartung jetzt ausführen.</label><button class="danger">Wartung starten</button></form></section>
 <section class="card"><h2>SSD Prepare</h2><p class="muted">Rein lesende Bestandsaufnahme von Datenträgern, NVMe und Bootloader.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="ssd"><button>SSD-Status anzeigen</button></form></section>
 <section class="card"><h2>Systemdetails</h2><p class="muted">Ausgabe der vorhandenen pi-status-Funktion.</p><form method="post" action="/action"><input type="hidden" name="csrf" value="{csrf}"><input type="hidden" name="action" value="status"><button>Statusdetails anzeigen</button></form></section>
 </div>
+<div class="grid">
+<div class="card"><div class="muted">CPU-Temperatur</div><div class="value">{html.escape(temp)}</div><div class="metricbar { "bad" if "tval" in locals() and tval >= 75 else "warn" if "tval" in locals() and tval >= 60 else "" }"><span style="width:{min(100, max(0, tval if "tval" in locals() else 0)):.0f}%"></span></div><p class="muted">Warnschwelle 75 °C</p></div>
+<div class="card"><div class="muted">RAM-Auslastung</div><div class="value">{html.escape(ram)}</div><div class="metricbar { "bad" if ram_pct >= 90 else "warn" if ram_pct >= 75 else "good" }"><span style="width:{ram_pct}%"></span></div></div>
+<div class="card"><div class="muted">Root-Speicher</div><div class="value">{disk_pct} %</div><div class="metricbar { "bad" if disk_pct >= 90 else "warn" if disk_pct >= 75 else "good" }"><span style="width:{disk_pct}%"></span></div><p class="muted">{html.escape(disk_info)}</p></div>
+<div class="card"><div class="muted">Laufzeit</div><div class="value">{html.escape(uptime)}</div></div>
+<div class="card"><div class="muted">System</div><div class="value">{html.escape(os_name)}</div></div>
+<div class="card"><div class="muted">Netzwerk / IPv4</div><div class="value" style="font-size:1rem;white-space:pre-line">{html.escape(network)}</div></div>
+</div>
+
+<section class="card"><h2>Linux-Terminal</h2><p class="muted">Interaktive Bash-Sitzung als Benutzer pi5terminal. Ein gleichzeitiger Browser-Client. Das Terminal hat keine sudo-Rechte.</p><iframe title="Linux-Terminal" src="{html.escape(terminal_url, quote=True)}" style="display:block;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;background:#0b1218" referrerpolicy="no-referrer"></iframe><p class="muted">Beim ersten Öffnen fragt der Browser nach den separaten Terminal-Zugangsdaten. Es ist absichtlich nur eine gleichzeitige Terminalsitzung zugelassen.</p></section>
+<section class="card"><h2>Dashboard-Passwort ändern</h2><p class="muted">Mindestens 12 Zeichen. Nach der Änderung wirst du abgemeldet und musst dich mit dem neuen Passwort erneut anmelden.</p><form method="post" action="/password"><input type="hidden" name="csrf" value="{csrf}"><div class="password-fields"><div><label>Neues Passwort</label><input type="password" name="new_password" minlength="12" maxlength="256" autocomplete="new-password" required></div><div><label>Neues Passwort bestätigen</label><input type="password" name="confirm_password" minlength="12" maxlength="256" autocomplete="new-password" required></div></div><button>Passwort ändern</button></form></section>
+
 """
         body += '<script>setTimeout(function(){location.reload()},5000);</script>'
         header_right = f'<div class="header-actions"><form method="post" action="/logout"><input type="hidden" name="csrf" value="{csrf}"><button class="danger">Abmelden</button></form></div>'
