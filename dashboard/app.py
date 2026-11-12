@@ -120,7 +120,7 @@ details.confirm-pop{position:relative}details.confirm-pop>summary{display:inline
 a{color:var(--accent)}footer{max-width:1050px;margin:auto;padding:10px 20px 30px;color:var(--muted);font-size:.85rem}
 </style>
 <header><div><h1>🍓 pi5-basics</h1><span class="muted">""" + html.escape(header_label) + """</span></div>""" + header_right + """</header>
-<main>""" + body + """</main><footer>Nur im vertrauenswürdigen Heimnetz verwenden. Keine Portweiterleitung aus dem Internet einrichten.</footer></html>"""
+<main>""" + body + """</main><footer style="text-align:center">Nur im vertrauenswürdigen Heimnetz verwenden. Keine Portweiterleitung aus dem Internet einrichten.</footer></html>"""
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "pi5-basics-dashboard/1.0"
