@@ -254,7 +254,7 @@ fi
 
 
 # Install the authenticated, LAN-only dashboard as an unprivileged service.
-apt-get install -y python3 sudo ttyd
+apt-get install -y python3 sudo ttyd nftables
 if ! id pi5dashboard >/dev/null 2>&1; then
   useradd --system --home-dir /var/lib/pi5-dashboard --create-home --shell /usr/sbin/nologin pi5dashboard
 fi
@@ -278,6 +278,7 @@ install -m 0644 "$PROJECT_DIR/dashboard/app.py" /opt/pi5-basics-dashboard/app.py
 install -o root -g root -m 0755 "$PROJECT_DIR/dashboard/action" /usr/local/sbin/pi5-dashboard-action
 install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-dashboard.service" /etc/systemd/system/pi5-dashboard.service
 install -o root -g root -m 0644 "$PROJECT_DIR/systemd/pi5-terminal.service" /etc/systemd/system/pi5-terminal.service
+install -o root -g root -m 0755 "$PROJECT_DIR/systemd/pi5-terminal-firewall" /usr/local/sbin/pi5-terminal-firewall
 if [[ ! -s /etc/pi5-basics-dashboard.token ]]; then
   DASHBOARD_TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
   printf '%s\n' "$DASHBOARD_TOKEN" >/etc/pi5-basics-dashboard.token
