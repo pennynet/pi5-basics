@@ -317,8 +317,8 @@ print(checksum_url)
   curl --fail --silent --show-error --location "$checksum_url" -o "$tmpdir/checksums.txt"
   expected="$(awk -v name="$asset" '{
     filename=$2
-    sub(/^\\*/, "", filename)
-    sub(/^\\.\\//, "", filename)
+    sub(/^[*]/, "", filename)
+    if (substr(filename, 1, 2) == "./") filename=substr(filename, 3)
     if (filename == name) {print $1; exit}
   }' "$tmpdir/checksums.txt")"
   [[ "$expected" =~ ^[[:xdigit:]]{64}$ ]] || {
